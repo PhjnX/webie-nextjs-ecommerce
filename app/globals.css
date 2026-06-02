@@ -1,0 +1,8 @@
+/* app/globals.css */
+@import "tailwindcss";
+
+@theme {
+  /* Đồng bộ toàn bộ về phông chữ không chân hiện đại */
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}

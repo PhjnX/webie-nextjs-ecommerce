@@ -7,20 +7,34 @@ export interface Product {
   image: string;
 }
 
+interface OdooProduct {
+  id: number;
+  name: string;
+  list_price?: number;
+  description_sale?: string | false | null;
+  default_code?: string | false | null;
+  image_1920?: string | false | null;
+}
+
+interface OdooProductsResponse {
+  success?: boolean;
+  data?: OdooProduct[];
+}
+
 export async function getVCardProducts(): Promise<Product[]> {
   try {
     const res = await fetch("http://localhost:3000/odoo/products", {
       cache: "no-store",
     });
 
-    if (!res.ok) throw new Error("Lỗi kết nối API Backend");
-    const result = await res.json();
+    if (!res.ok) throw new Error("Backend API connection error");
+    const result = (await res.json()) as OdooProductsResponse;
 
     if (!result.success || !result.data) return [];
 
-    return result.data.map((item: any) => {
+    return result.data.map((item) => {
       let finalDescription =
-        "Mẫu danh thiếp điện tử (Digital vCard) cao cấp, thiết kế luxury, tối ưu hóa hiển thị và tính năng cá nhân hóa hoàn hảo trên di động.";
+        "Premium digital vCard template, luxury design, optimized display and full personalization for mobile.";
       if (item.description_sale && item.description_sale !== false) {
         finalDescription = item.description_sale;
       }
@@ -37,7 +51,7 @@ export async function getVCardProducts(): Promise<Product[]> {
       };
     });
   } catch (error) {
-    console.error("Lỗi fetch data từ NextJS sang NestJS:", error);
+    console.error("Error fetching data from backend:", error);
     return [];
   }
 }

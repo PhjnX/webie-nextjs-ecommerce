@@ -5,25 +5,26 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { ShoppingCart, ChevronDown, Menu, X, User } from "lucide-react";
+import AboutUs from "@/app/components/home/AboutUs";
 
 const productCategories = [
   {
-    name: "Thiệp Điện Tử",
-    desc: "Thiệp chúc mừng cá nhân hoá nghệ thuật",
+    name: "Greeting Cards",
+    desc: "Personalized artistic greeting cards",
     href: "/products",
     color: "text-stone-600",
     bg: "bg-stone-50",
   },
   {
-    name: "Giao Diện Website",
-    desc: "Mẫu website chuyên nghiệp chuẩn SEO",
+    name: "Website Templates",
+    desc: "SEO-ready professional website templates",
     href: "/products",
     color: "text-stone-600",
     bg: "bg-stone-50",
   },
   {
-    name: "Mẫu Ứng Dụng",
-    desc: "Bộ UI Kit và mã nguồn ứng dụng di động",
+    name: "App Templates",
+    desc: "UI kits and mobile app starter templates",
     href: "/products",
     color: "text-stone-600",
     bg: "bg-stone-50",
@@ -75,11 +76,11 @@ export default function Header() {
 
           {/* Điều hướng giữa */}
           <nav className="hidden md:flex items-center gap-3 h-full">
-            <Link
+              <Link
               href="/"
               className="text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold"
             >
-              Trang chủ
+              Home
             </Link>
 
             {/* Dropdown Sản phẩm */}
@@ -89,7 +90,7 @@ export default function Header() {
               onMouseLeave={() => setDropdownOpen(false)}
             >
               <button className="flex items-center gap-1.5 text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold">
-                Sản phẩm
+                Products
                 <ChevronDown
                   size={12}
                   className={`transition-transform duration-300 ${dropdownOpen ? "rotate-180" : ""}`}
@@ -124,7 +125,7 @@ export default function Header() {
                         className="flex items-center px-4 py-2 hover:bg-stone-50 transition-colors group"
                       >
                         <span className="text-[11px] uppercase tracking-widest text-stone-500 group-hover:text-[#D8C97B] font-semibold transition-colors">
-                          Tất cả sản phẩm →
+                          All products →
                         </span>
                       </Link>
                     </div>
@@ -134,16 +135,16 @@ export default function Header() {
             </div>
 
             <Link
-              href="/about"
+              href="/#AboutUs"
               className="text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold"
             >
-              Về chúng tôi
+              About Us
             </Link>
             <Link
-              href="/contact"
+              href="/#contact"
               className="text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold"
             >
-              Liên hệ
+              Contact
             </Link>
           </nav>
 
@@ -154,13 +155,13 @@ export default function Header() {
               <button
                 onClick={() => setIsLoginOpen(true)}
                 className="w-10 h-10 flex items-center justify-center rounded-full text-stone-600 hover:text-[#D8C97B] hover:bg-stone-50/50 transition-all duration-200"
-                aria-label="Tài khoản"
+                aria-label="Account"
               >
                 <User size={20} />
               </button>
 
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-stone-900 text-[10px] text-white rounded shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap tracking-widest uppercase z-50">
-                Đăng nhập
+                Sign in
               </div>
             </div>
 
@@ -192,13 +193,13 @@ export default function Header() {
               href="/"
               className="text-sm uppercase tracking-wider text-stone-600 hover:text-[#D8C97B] py-2 transition-colors"
             >
-              Trang chủ
+              Home
             </Link>
             <Link
               href="/products"
               className="text-sm uppercase tracking-wider text-stone-600 hover:text-[#D8C97B] py-2 transition-colors"
             >
-              Sản phẩm
+              Products
             </Link>
             {productCategories.map((cat) => (
               <Link
@@ -213,13 +214,13 @@ export default function Header() {
               href="/about"
               className="text-sm uppercase tracking-wider text-stone-500 hover:text-[#D8C97B] py-2 transition-colors"
             >
-              Về chúng tôi
+              About Us
             </Link>
             <Link
               href="/contact"
               className="text-sm uppercase tracking-wider text-stone-500 hover:text-[#D8C97B] py-2 transition-colors"
             >
-              Liên hệ
+              Contact
             </Link>
 
             <div className="flex gap-3 pt-4 border-t border-stone-100">
@@ -230,7 +231,7 @@ export default function Header() {
                 }}
                 className="flex-1 text-center text-xs uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] py-3 border border-stone-200 rounded font-semibold transition-colors"
               >
-                Đăng nhập
+                Log in
               </button>
               <Link
                 href="/cart"
@@ -243,7 +244,7 @@ export default function Header() {
         )}
       </header>
 
-      {/* Pop-up Đăng nhập */}
+      {/* Pop-up Sign in */}
       {isLoginOpen && (
         <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-md rounded-2xl p-8 md:p-10 relative shadow-2xl border border-stone-100/80 animate-in fade-in zoom-in-95 duration-200">
@@ -256,10 +257,10 @@ export default function Header() {
 
             <div className="text-center mb-8">
               <h2 className="font-serif text-3xl font-light tracking-wide text-stone-900">
-                Đăng Nhập
+                Log in
               </h2>
               <p className="font-serif italic text-xs text-stone-600 mt-1.5">
-                Khám phá không gian sản phẩm số tinh tế
+                Discover our curated digital products
               </p>
             </div>
 
@@ -271,8 +272,8 @@ export default function Header() {
               className="space-y-5"
             >
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.15em] text-stone-600 mb-2 font-medium">
-                  Địa chỉ Email
+                  <label className="block text-[10px] uppercase tracking-[0.15em] text-stone-600 mb-2 font-medium">
+                  Email address
                 </label>
                 <input
                   type="email"
@@ -285,13 +286,13 @@ export default function Header() {
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-[10px] uppercase tracking-[0.15em] text-stone-600 font-medium">
-                    Mật khẩu
+                    Password
                   </label>
                   <a
                     href="#"
                     className="text-[10px] text-stone-600 hover:text-[#D8C97B] transition-colors font-medium"
-                  >
-                    Quên mật khẩu?
+                    >
+                    Forgot password?
                   </a>
                 </div>
                 <input
@@ -308,15 +309,15 @@ export default function Header() {
                     type="checkbox"
                     className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-[#D8C97B] accent-stone-900"
                   />
-                  Duy trì đăng nhập
+                  Remember me
                 </label>
               </div>
 
               <button
                 type="submit"
                 className="w-full bg-stone-900 hover:bg-[#D8C97B] hover:text-stone-950 text-white text-xs uppercase tracking-[0.2em] font-semibold py-3.5 rounded-lg transition-all duration-300 shadow-lg shadow-stone-950/10 hover:shadow-stone-950/5 active:scale-[0.99] mt-2"
-              >
-                Truy cập tài khoản
+                >
+                Sign in
               </button>
             </form>
 
@@ -325,7 +326,7 @@ export default function Header() {
                 <div className="w-full border-t border-stone-100"></div>
               </div>
               <span className="relative px-3 bg-white text-[10px] uppercase tracking-widest text-stone-300">
-                Hoặc tiếp tục với
+                Or continue with
               </span>
             </div>
 
@@ -351,13 +352,13 @@ export default function Header() {
             </div>
 
             <div className="mt-8 pt-6 border-t border-stone-100 text-center">
-              <p className="text-xs text-stone-600">
-                Thành viên mới?{" "}
+                <p className="text-xs text-stone-600">
+                New here?{" "}
                 <a
                   href="#"
                   className="text-stone-900 hover:text-[#D8C97B] hover:underline font-semibold transition-colors"
                 >
-                  Tạo tài khoản tại đây
+                  Create an account
                 </a>
               </p>
             </div>

@@ -22,22 +22,21 @@ export default function PremiumCollection({
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-xl mx-auto mb-16">
           <span className="text-stone-400 text-[10px] tracking-[0.2em] uppercase block mb-3">
-            BST chọn lọc
+            Curated Collection
           </span>
           <h2 className="font-serif text-3xl md:text-4xl font-light text-stone-900">
-            Digital vCards tiêu biểu
+            Featured Digital vCards
           </h2>
           <p className="text-stone-400 text-xs mt-3 leading-relaxed font-light">
-            Sản phẩm được đồng bộ thời gian thực từ hệ thống Odoo ERP & NestJS,
-            sẵn sàng bàn giao và kích hoạt trong ngày.
+            Products are synchronized in real-time from the Odoo ERP & NestJS
+            system, ready for delivery and same-day activation.
           </p>
         </div>
 
         {products.length === 0 ? (
           <div className="text-center py-20 bg-white border border-stone-200/60 rounded">
             <p className="text-stone-400 text-xs font-light">
-              Chưa tìm thấy sản phẩm vCard nào. Bạn vui lòng kiểm tra lại kết
-              nối API.
+              No vCard products found. Please check the API connection.
             </p>
           </div>
         ) : (
@@ -70,10 +69,10 @@ export default function PremiumCollection({
                   <div className="mt-8 pt-6 border-t border-stone-100">
                     <div className="flex justify-between items-baseline mb-6">
                       <span className="text-[10px] text-stone-400 uppercase tracking-wider font-light">
-                        Giá dịch vụ trọn gói
+                        Service package price
                       </span>
                       <span className="text-xl font-medium text-stone-900">
-                        {new Intl.NumberFormat("vi-VN", {
+                        {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "VND",
                         }).format(product.list_price)}
@@ -87,13 +86,13 @@ export default function PremiumCollection({
                         rel="noopener noreferrer"
                         className="text-center border border-stone-200 text-stone-600 hover:text-stone-900 hover:border-stone-400 text-xs font-medium py-3 rounded transition-all duration-200"
                       >
-                        Bản Demo
+                        Demo
                       </a>
                       <button
                         onClick={() => handlePurchase(product.name)}
                         className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium py-3 rounded transition-all duration-200"
                       >
-                        Đăng Ký Mua
+                        Buy now
                       </button>
                     </div>
                   </div>

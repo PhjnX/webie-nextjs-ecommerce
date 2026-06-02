@@ -4,18 +4,18 @@ import { Zap, Smartphone, CheckCircle } from "lucide-react";
 const values = [
   {
     icon: <Zap size={18} className="text-stone-600" />,
-    title: "Hiệu năng tức thì",
-    desc: "Tải trang dưới 1 giây nhờ tối ưu hóa mã nguồn Next.js Server Components, mang lại trải nghiệm không gián đoạn.",
+    title: "Instant performance",
+    desc: "Pages load under 1s thanks to Next.js Server Components optimizations for a seamless experience.",
   },
   {
     icon: <Smartphone size={18} className="text-stone-600" />,
-    title: "Tương thích tuyệt đối",
-    desc: "Giao diện được may đo chuẩn xác cho từng kích thước màn hình di động, tối ưu hóa mọi điểm chạm của khách hàng.",
+    title: "Perfect compatibility",
+    desc: "Designs are tailored for every mobile viewport, optimizing every touchpoint for customers.",
   },
   {
     icon: <CheckCircle size={18} className="text-stone-600" />,
-    title: "Quản trị tinh giản",
-    desc: "Dữ liệu được đồng bộ hóa trực tiếp với hệ thống Odoo ERP, giúp cập nhật thông tin và theo dõi đơn hàng dễ dàng.",
+    title: "Simplified management",
+    desc: "Data syncs directly with your Odoo ERP for easy updates and order tracking.",
   },
 ];
 

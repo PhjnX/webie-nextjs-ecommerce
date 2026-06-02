@@ -14,22 +14,21 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs text-stone-400 leading-relaxed font-light">
-              Sản phẩm số cá nhân hoá dành cho chuyên gia và doanh nghiệp toàn
-              cầu.
+              Personalized digital products for professionals and businesses worldwide.
             </p>
           </div>
 
-          {/* Sản phẩm */}
+          {/* Products */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-stone-900 font-medium mb-4">
-              Sản phẩm
+              Products
             </h4>
             <ul className="flex flex-col gap-2.5">
               {[
                 "Greeting Cards",
                 "Website Templates",
                 "App Templates",
-                "Tất cả sản phẩm",
+                "All products",
               ].map((item) => (
                 <li key={item}>
                   <Link
@@ -43,17 +42,17 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Công ty */}
+          {/* Company */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-stone-900 font-medium mb-4">
-              Công ty
+              Company
             </h4>
             <ul className="flex flex-col gap-2.5">
               {[
                 { label: "About Us", href: "/about" },
-                { label: "Liên hệ", href: "/contact" },
-                { label: "Chính sách bảo mật", href: "/privacy" },
-                { label: "Điều khoản dịch vụ", href: "/terms" },
+                { label: "Contact", href: "/contact" },
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
               ].map((item) => (
                 <li key={item.href}>
                   <Link
@@ -67,15 +66,15 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Liên hệ */}
+          {/* Contact */}
           <div>
             <h4 className="text-xs uppercase tracking-widest text-stone-900 font-medium mb-4">
-              Liên hệ
+              Contact
             </h4>
             <ul className="flex flex-col gap-2.5">
               <li className="text-xs text-stone-400">hello@webie.vn</li>
               <li className="text-xs text-stone-400">
-                TP. Hồ Chí Minh, Việt Nam
+                Ho Chi Minh City, Vietnam
               </li>
             </ul>
           </div>
@@ -84,9 +83,6 @@ export default function Footer() {
         <div className="border-t border-stone-100 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="text-xs text-stone-300">
             © {new Date().getFullYear()} Webie VietNam. All rights reserved.
-          </p>
-          <p className="text-xs text-stone-300">
-            Powered by Odoo · NestJS · Next.js
           </p>
         </div>
       </div>

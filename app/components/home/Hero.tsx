@@ -25,15 +25,15 @@ export default function Hero() {
         <div className="max-w-2xl">
           {/* Slogan viết hoa, độ giãn chữ vừa phải, sắc nét và hiện đại */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 uppercase leading-[1.1] mb-6 font-sans">
-            Giao Diện Số <br />
-            <span className="text-[#D8C97B]">Cá Nhân Hóa</span>
+            Personalized Digital<br />
+            <span className="text-[#D8C97B]">Experiences</span>
           </h1>
 
-          {/* Mô tả ngắn gọn, dễ đọc, không bị đè lên chi tiết ảnh */}
+          {/* Short description */}
           <p className="text-stone-500 text-xs md:text-sm lg:text-base leading-relaxed font-normal max-w-md mb-10 font-sans">
-            Sở hữu mẫu vCard, Website và Ứng dụng độc bản. Chúng tôi thiết kế,
-            may đo nội dung và tích hợp API trọn gói theo yêu cầu của bạn với
-            tốc độ tải trang dưới 1 giây.
+            Own unique vCards, websites and apps. We design, tailor content and
+            provide end-to-end API integration to meet your needs with fast page
+            load times.
           </p>
 
           {/* Nhóm nút tương tác */}
@@ -42,14 +42,14 @@ export default function Hero() {
               href="#collection"
               className="inline-flex items-center gap-2 bg-stone-900 hover:bg-[#D8C97B] hover:text-stone-950 text-white text-xs uppercase tracking-widest font-semibold py-3.5 px-7 rounded transition-all duration-300 shadow-md shadow-stone-950/5"
             >
-              Khám phá sản phẩm <ArrowRight size={14} />
+              Explore products <ArrowRight size={14} />
             </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center justify-center border border-stone-200 bg-white/60 backdrop-blur-sm hover:border-[#D8C97B] hover:text-[#D8C97B] text-stone-600 text-xs uppercase tracking-widest font-semibold py-3.5 px-7 rounded transition-all duration-300"
-            >
-              Yêu cầu thiết kế riêng
-            </Link>
+            {/*<Link*/}
+            {/*  href="/contact"*/}
+            {/*  className="inline-flex items-center justify-center border border-stone-200 bg-white/60 backdrop-blur-sm hover:border-[#D8C97B] hover:text-[#D8C97B] text-stone-600 text-xs uppercase tracking-widest font-semibold py-3.5 px-7 rounded transition-all duration-300"*/}
+            {/*>*/}
+            {/*  Request custom design*/}
+            {/*</Link>*/}
           </div>
         </div>
       </div>

@@ -26,9 +26,14 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
+const Categories = [
+  { id: 8, name: "Digital Vcard" },
+  { id: 6, name: "Website Template" },
+  { id: 10, name: "Greeting Card" },
+];
+
 export default function ProductStore({
   productsResult,
-  categories,
   selectedCategoryId,
   selectedKeyword,
 }: ProductStoreProps) {
@@ -47,23 +52,25 @@ export default function ProductStore({
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState(selectedKeyword);
 
-  const categoryOptions = useMemo(() => {
-    const options = new Map<number, string>();
+  // const categoryOptions = useMemo(() => {
+  //   const options = new Map<number, string>();
+  //
+  //   for (const category of categories) {
+  //     if (category.id > 0 && !options.has(category.id)) {
+  //       options.set(category.id, category.name);
+  //     }
+  //   }
+  //
+  //   for (const product of products) {
+  //     if (product.category.id > 0 && !options.has(product.category.id)) {
+  //       options.set(product.category.id, product.category.name);
+  //     }
+  //   }
+  //
+  //   return Array.from(options, ([id, name]) => ({ id, name }));
+  // }, [categories, products]);
 
-    for (const category of categories) {
-      if (category.id > 0 && !options.has(category.id)) {
-        options.set(category.id, category.name);
-      }
-    }
-
-    for (const product of products) {
-      if (product.category.id > 0 && !options.has(product.category.id)) {
-        options.set(product.category.id, product.category.name);
-      }
-    }
-
-    return Array.from(options, ([id, name]) => ({ id, name }));
-  }, [categories, products]);
+  const categoryOptions = Categories;
 
   const minCatalogPrice = useMemo(() => {
     return products.length
@@ -326,47 +333,42 @@ export default function ProductStore({
             ) : (
               <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
                 {filteredProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className="group flex min-h-full flex-col border border-stone-200 bg-white p-5 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/60"
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-stone-100">
-                      {/*<Image*/}
-                      {/*  src={product.image}*/}
-                      {/*  alt={product.name}*/}
-                      {/*  fill*/}
-                      {/*  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 360px"*/}
-                      {/*  className="object-cover transition duration-500 group-hover:scale-105"*/}
-                      {/*/>*/}
-                      <img src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
-                           className="w-100 img-fluid"/>
-                    </div>
-
-                    <div className="flex flex-1 flex-col pt-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b39a42]">
-                            {product.category.name}
-                          </p>
-                          <h2 className="mt-2 text-2xl font-bold leading-tight text-stone-950">
-                            {product.name}
-                          </h2>
-                        </div>
-                        <p className="whitespace-nowrap font-mono text-base font-bold text-blue-700">
-                          {priceFormatter.format(product.price)}
-                        </p>
+                    <article
+                        key={product.id}
+                        className="group flex min-h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm shadow-stone-200/50 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/70"
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
+                      <span
+                          className="absolute left-5 top-5 z-10 max-w-[calc(100%-2.5rem)] truncate rounded-full bg-[#f2bf35] px-4 py-2 text-xs font-bold text-[#5f4a0a] shadow-sm">
+                        {product.category.name}
+                      </span>
+                        {/*<Image*/}
+                        {/*  src={product.image}*/}
+                        {/*  alt={product.name}*/}
+                        {/*  fill*/}
+                        {/*  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 360px"*/}
+                        {/*  className="object-cover object-top transition-[object-position,transform] duration-[4500ms] ease-in-out group-hover:scale-[1.02] group-hover:object-bottom motion-reduce:transition-none motion-reduce:group-hover:scale-100"*/}
+                        {/*/>*/}
+                        <img
+                            src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
+                            className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
+                        />
                       </div>
 
-                      <p className="mt-5 line-clamp-4 flex-1 text-base leading-relaxed text-stone-600">
-                        {product.description}
+                      <div className="flex flex-1 flex-col p-7">
+                      <h2 className="text-2xl font-bold leading-tight text-stone-950">
+                        {product.name}
+                      </h2>
+                      <p className="mt-2 font-mono text-lg font-bold text-[#6f4f00]">
+                        {priceFormatter.format(product.price)}
                       </p>
 
                       <button
                         type="button"
                         onClick={() => handleAddToCart(product.name)}
-                        className="mt-7 border border-stone-950 bg-[#efe3b6] px-5 py-4 text-sm font-bold uppercase tracking-[0.22em] text-stone-950 transition hover:bg-stone-950 hover:text-white"
+                        className="mt-auto rounded-lg bg-[#f2bf35] px-5 py-4 text-sm font-bold text-[#5f4a0a] transition hover:bg-stone-950 hover:text-white"
                       >
-                        Add to cart
+                        Add to Cart
                       </button>
                     </div>
                   </article>

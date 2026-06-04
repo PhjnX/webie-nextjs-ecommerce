@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { ShoppingCart, ChevronDown, Menu, X, User } from "lucide-react";
-import AboutUs from "@/app/components/home/AboutUs";
 
 const productCategories = [
   {
@@ -90,48 +89,53 @@ export default function Header() {
               onMouseLeave={() => setDropdownOpen(false)}
             >
               <button className="flex items-center gap-1.5 text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold">
-                Products
-                <ChevronDown
-                  size={12}
-                  className={`transition-transform duration-300 ${dropdownOpen ? "rotate-180" : ""}`}
-                />
+                <Link
+                    href="/#services"
+                    className="text-[13px] uppercase tracking-widest text-stone-600 hover:text-[#D8C97B] px-3 py-2 transition-colors font-semibold"
+                >
+                  Services
+                </Link>
+                {/*<ChevronDown*/}
+                {/*  size={12}*/}
+                {/*  className={`transition-transform duration-300 ${dropdownOpen ? "rotate-180" : ""}`}*/}
+                {/*/>*/}
               </button>
 
-              {dropdownOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 w-72 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="bg-white border border-stone-100 rounded-lg shadow-xl shadow-stone-100/40 py-2.5">
-                    {productCategories.map((cat) => (
-                      <Link
-                        key={cat.name}
-                        href={cat.href}
-                        className="flex items-center gap-4 px-4 py-3 hover:bg-stone-50 transition-colors group"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center flex-shrink-0 border border-stone-100">
-                          <div className="w-1.5 h-1.5 rounded-full bg-stone-600 group-hover:bg-[#D8C97B] transition-colors" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold text-stone-850 group-hover:text-[#D8C97B] transition-colors">
-                            {cat.name}
-                          </div>
-                          <div className="text-[10px] text-stone-600 mt-0.5 leading-normal">
-                            {cat.desc}
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                    <div className="border-t border-stone-100 mt-2.5 pt-2">
-                      <Link
-                        href="/products"
-                        className="flex items-center px-4 py-2 hover:bg-stone-50 transition-colors group"
-                      >
-                        <span className="text-[11px] uppercase tracking-widest text-stone-500 group-hover:text-[#D8C97B] font-semibold transition-colors">
-                          All products →
-                        </span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/*{dropdownOpen && (*/}
+              {/*  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 w-72 z-50 animate-in fade-in slide-in-from-top-1 duration-150">*/}
+              {/*    <div className="bg-white border border-stone-100 rounded-lg shadow-xl shadow-stone-100/40 py-2.5">*/}
+              {/*      {productCategories.map((cat) => (*/}
+              {/*        <Link*/}
+              {/*          key={cat.name}*/}
+              {/*          href={cat.href}*/}
+              {/*          className="flex items-center gap-4 px-4 py-3 hover:bg-stone-50 transition-colors group"*/}
+              {/*        >*/}
+              {/*          <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center flex-shrink-0 border border-stone-100">*/}
+              {/*            <div className="w-1.5 h-1.5 rounded-full bg-stone-600 group-hover:bg-[#D8C97B] transition-colors" />*/}
+              {/*          </div>*/}
+              {/*          <div>*/}
+              {/*            <div className="text-xs font-semibold text-stone-850 group-hover:text-[#D8C97B] transition-colors">*/}
+              {/*              {cat.name}*/}
+              {/*            </div>*/}
+              {/*            <div className="text-[10px] text-stone-600 mt-0.5 leading-normal">*/}
+              {/*              {cat.desc}*/}
+              {/*            </div>*/}
+              {/*          </div>*/}
+              {/*        </Link>*/}
+              {/*      ))}*/}
+              {/*      <div className="border-t border-stone-100 mt-2.5 pt-2">*/}
+              {/*        <Link*/}
+              {/*          href="/products"*/}
+              {/*          className="flex items-center px-4 py-2 hover:bg-stone-50 transition-colors group"*/}
+              {/*        >*/}
+              {/*          <span className="text-[11px] uppercase tracking-widest text-stone-500 group-hover:text-[#D8C97B] font-semibold transition-colors">*/}
+              {/*            All products →*/}
+              {/*          </span>*/}
+              {/*        </Link>*/}
+              {/*      </div>*/}
+              {/*    </div>*/}
+              {/*  </div>*/}
+              {/*)}*/}
             </div>
 
             <Link
@@ -169,7 +173,8 @@ export default function Header() {
 
             {/* Giỏ hàng */}
             <Link
-              href="/cart"
+              href="/payment"
+              aria-label="Shopping cart and payment"
               className="relative w-10 h-10 flex items-center justify-center rounded-full text-stone-600 hover:text-[#D8C97B] hover:bg-stone-50/50 transition-all duration-200"
             >
               <ShoppingCart size={20} />
@@ -234,7 +239,8 @@ export default function Header() {
                 Log in
               </button>
               <Link
-                href="/cart"
+                href="/payment"
+                aria-label="Shopping cart and payment"
                 className="w-12 flex items-center justify-center border border-stone-200 rounded text-stone-600 hover:text-[#D8C97B] transition-colors"
               >
                 <ShoppingCart size={20} />

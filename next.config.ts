@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "webie-vietnam1.odoo.com",
+        port: "",
+        pathname: "/web/image/**",
+        search: "",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

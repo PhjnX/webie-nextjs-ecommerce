@@ -39,7 +39,7 @@ export default function Hero() {
           {/* Nhóm nút tương tác */}
           <div className="flex flex-wrap gap-4 font-sans">
             <Link
-              href="#collection"
+              href="/products"
               className="inline-flex items-center gap-2 bg-stone-900 hover:bg-[#D8C97B] hover:text-stone-950 text-white text-xs uppercase tracking-widest font-semibold py-3.5 px-7 rounded transition-all duration-300 shadow-md shadow-stone-950/5"
             >
               Explore products <ArrowRight size={14} />

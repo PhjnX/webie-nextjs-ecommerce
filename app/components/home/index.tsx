@@ -2,16 +2,10 @@
 import Hero from "./Hero";
 import OurServices from "./OurServices";
 import AboutUs from "./AboutUs";
-import PremiumCollection from "./PremiumCollection";
 import Workflow from "./Workflow";
-import CallToAction from "./CallToAction";
-import { Product } from "../../../services/product";
+import ContactSection from "@/app/components/contact/ContactSection";
 
-interface HomeContentProps {
-  products: Product[];
-}
-
-export default function HomeContent({ products }: HomeContentProps) {
+export default function HomeContent() {
   return (
     <div className="min-h-screen bg-white">
       {/* 1. Banner chính */}
@@ -28,9 +22,7 @@ export default function HomeContent({ products }: HomeContentProps) {
 
       {/* 5. Quy trình làm việc */}
       <Workflow />
-
-      {/* 6. Kêu gọi hành động */}
-      <CallToAction />
+      <ContactSection />
     </div>
   );
 }

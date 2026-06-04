@@ -124,7 +124,7 @@ export default function Header() {
               About Us
             </Link>
             <Link
-              href="/#contact"
+              href="/contact"
               className="px-3 py-2 text-[13px] font-semibold uppercase tracking-widest text-stone-600 transition-colors hover:text-[#D8C97B]"
             >
               Contact
@@ -203,7 +203,7 @@ export default function Header() {
               About Us
             </Link>
             <Link
-              href="/#contact"
+              href="/contact"
               onClick={() => setMobileOpen(false)}
               className="py-2 text-sm uppercase tracking-wider text-stone-500 transition-colors hover:text-[#D8C97B]"
             >

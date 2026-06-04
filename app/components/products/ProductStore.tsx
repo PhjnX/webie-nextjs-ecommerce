@@ -2,8 +2,9 @@
 
 // components/product/ProductStore.tsx
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, Search } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { ProductsResult } from "@/services/product";
 
 interface ProductStoreProps {
@@ -18,6 +19,15 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
 
 export default function ProductStore({ productsResult }: ProductStoreProps) {
   const products = productsResult.products;
+  const pageSize = productsResult.limit > 0 ? productsResult.limit : 20;
+  const totalPages = Math.max(1, Math.ceil(productsResult.total / pageSize));
+  const currentPage = Math.min(
+    totalPages,
+    Math.max(1, Math.floor(productsResult.offset / pageSize) + 1),
+  );
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
   const [selectedCategories, setSelectedCategories] = useState<string[] | null>(
     null,
   );
@@ -26,7 +36,9 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
 
   const categoryNames = useMemo(() => {
     return Array.from(
-      new Set(products.map((product) => product.category.name)),
+      new Set(products
+          // .filter((product) => product.id !== 1)
+          .map((product) => product.category.name)),
     );
   }, [products]);
 
@@ -51,6 +63,9 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
       const matchesCategory =
         selectedCategories === null ||
         selectedCategories.includes(product.category.name);
+
+      //const isNotHiddenProduct = product.id !== 1;
+
       const matchesPrice = product.price <= effectiveMaxPrice;
       const searchableText = [
         product.name,
@@ -85,6 +100,10 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
 
   const handleAddToCart = (productName: string) => {
     alert(`Added to cart: ${productName}`);
+  };
+
+  const getPageHref = (page: number) => {
+    return page === 1 ? "/products" : `/products?page=${page}`;
   };
 
   return (
@@ -200,7 +219,7 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
           </aside>
 
           <div>
-            <div className="mb-6 flex items-center justify-between text-sm text-stone-500">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500">
               <span>
                 Showing {filteredProducts.length} of {products.length} loaded
                 products
@@ -208,6 +227,52 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
                   ? ` (${productsResult.total} total)`
                   : ""}
               </span>
+
+              {totalPages > 1 ? (
+                <nav
+                  aria-label="Product pagination"
+                  className="flex items-center gap-3"
+                >
+                  {hasPreviousPage ? (
+                    <Link
+                      href={getPageHref(currentPage - 1)}
+                      aria-label="Previous page"
+                      className="flex h-9 w-9 items-center justify-center text-stone-950 transition hover:text-[#b39a42]"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Link>
+                  ) : null}
+
+                  {pageNumbers.map((page) => {
+                    const isCurrentPage = page === currentPage;
+
+                    return (
+                      <Link
+                        key={page}
+                        href={getPageHref(page)}
+                        aria-current={isCurrentPage ? "page" : undefined}
+                        className={
+                          isCurrentPage
+                            ? "flex h-9 w-9 items-center justify-center bg-[#c9b879] text-sm font-bold text-white"
+                            : "flex h-9 w-9 items-center justify-center text-sm font-bold text-stone-950 transition hover:text-[#b39a42]"
+                        }
+                      >
+                        {page}
+                      </Link>
+                    );
+                  })}
+
+                  {hasNextPage ? (
+                    <Link
+                      href={getPageHref(currentPage + 1)}
+                      aria-label="Next page"
+                      className="flex h-9 w-9 items-center justify-center text-stone-950 transition hover:text-[#b39a42]"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Link>
+                  ) : null}
+                </nav>
+              ) : null}
             </div>
 
             {filteredProducts.length === 0 ? (

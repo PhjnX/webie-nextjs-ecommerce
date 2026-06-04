@@ -200,46 +200,46 @@ function ContactSection({ variant = "home" }: ContactSectionProps) {
           </form>
         </div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          <article className="border border-stone-200 bg-white p-6">
-            <h3 className="text-xs font-semibold uppercase text-[#9d8948]">
-              Office
-            </h3>
-            <p className="mt-3 text-base font-semibold text-stone-950">
-              Dist 1, Ho Chi Minh City
-            </p>
-          </article>
+        {/*<div className="mt-8 grid gap-5 md:grid-cols-3">*/}
+        {/*  <article className="border border-stone-200 bg-white p-6">*/}
+        {/*    <h3 className="text-xs font-semibold uppercase text-[#9d8948]">*/}
+        {/*      Office*/}
+        {/*    </h3>*/}
+        {/*    <p className="mt-3 text-base font-semibold text-stone-950">*/}
+        {/*      Dist 1, Ho Chi Minh City*/}
+        {/*    </p>*/}
+        {/*  </article>*/}
 
-          <article className="border border-stone-200 bg-white p-6">
-            <h3 className="text-xs font-semibold uppercase text-[#9d8948]">
-              Contact
-            </h3>
-            <a
-              href="mailto:hello@webie.vn"
-              className="mt-3 inline-flex text-base font-semibold text-stone-950 transition hover:text-[#9d8948]"
-            >
-              hello@webie.vn
-            </a>
-          </article>
+        {/*  <article className="border border-stone-200 bg-white p-6">*/}
+        {/*    <h3 className="text-xs font-semibold uppercase text-[#9d8948]">*/}
+        {/*      Contact*/}
+        {/*    </h3>*/}
+        {/*    <a*/}
+        {/*      href="mailto:hello@webie.vn"*/}
+        {/*      className="mt-3 inline-flex text-base font-semibold text-stone-950 transition hover:text-[#9d8948]"*/}
+        {/*    >*/}
+        {/*      hello@webie.vn*/}
+        {/*    </a>*/}
+        {/*  </article>*/}
 
-          <article className="border border-stone-200 bg-white p-6">
-            <h3 className="text-xs font-semibold uppercase text-[#9d8948]">
-              Social
-            </h3>
-            <div className="mt-3 flex gap-5">
-              {socialLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  aria-label={link.label}
-                  className="text-base font-semibold text-stone-950 transition hover:text-[#9d8948]"
-                >
-                  {link.short}
-                </a>
-              ))}
-            </div>
-          </article>
-        </div>
+        {/*  <article className="border border-stone-200 bg-white p-6">*/}
+        {/*    <h3 className="text-xs font-semibold uppercase text-[#9d8948]">*/}
+        {/*      Social*/}
+        {/*    </h3>*/}
+        {/*    <div className="mt-3 flex gap-5">*/}
+        {/*      {socialLinks.map((link) => (*/}
+        {/*        <a*/}
+        {/*          key={link.label}*/}
+        {/*          href={link.href}*/}
+        {/*          aria-label={link.label}*/}
+        {/*          className="text-base font-semibold text-stone-950 transition hover:text-[#9d8948]"*/}
+        {/*        >*/}
+        {/*          {link.short}*/}
+        {/*        </a>*/}
+        {/*      ))}*/}
+        {/*    </div>*/}
+        {/*  </article>*/}
+        {/*</div>*/}
       </div>
     </section>
   );

@@ -14,16 +14,18 @@ import {
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import {
+  forgotPassword,
   loginAccount,
   logoutAccount,
   registerAccount,
+  resetPassword,
   type AuthResponse,
   type AuthSession,
   type AuthUser,
   verifyOtp,
 } from "@/services/auth";
 
-type AuthMode = "login" | "register" | "verify";
+type AuthMode = "login" | "register" | "verify" | "forgot" | "reset";
 
 interface AuthDialogProps {
   open: boolean;
@@ -90,6 +92,15 @@ export default function AuthDialog({
     email: "",
     otp: "",
   });
+  const [forgotForm, setForgotForm] = useState({
+    email: "",
+  });
+  const [resetForm, setResetForm] = useState({
+    email: "",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   const title = useMemo(() => {
     if (session) {
@@ -102,6 +113,14 @@ export default function AuthDialog({
 
     if (mode === "verify") {
       return "Verify email";
+    }
+
+    if (mode === "forgot") {
+      return "Forgot password";
+    }
+
+    if (mode === "reset") {
+      return "Reset password";
     }
 
     return "Log in";
@@ -121,6 +140,13 @@ export default function AuthDialog({
     setMode(nextMode);
     setErrorMessage("");
     setStatusMessage("");
+  };
+
+  const openForgotPassword = () => {
+    setForgotForm({
+      email: loginForm.email.trim(),
+    });
+    switchMode("forgot");
   };
 
   const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
@@ -227,6 +253,78 @@ export default function AuthDialog({
     }
   };
 
+  const handleForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (processing) {
+      return;
+    }
+
+    setProcessing(true);
+    setErrorMessage("");
+    setStatusMessage("");
+
+    try {
+      const payload = {
+        email: forgotForm.email.trim(),
+      };
+      const response = await forgotPassword(payload);
+
+      setResetForm({
+        email: payload.email,
+        otp: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setStatusMessage(
+        response.message || "OTP sent. Check your email to reset your password.",
+      );
+      setMode("reset");
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (processing) {
+      return;
+    }
+
+    setProcessing(true);
+    setErrorMessage("");
+    setStatusMessage("");
+
+    try {
+      if (resetForm.newPassword !== resetForm.confirmPassword) {
+        throw new Error("Passwords do not match.");
+      }
+
+      const payload = {
+        email: resetForm.email.trim(),
+        otp: resetForm.otp.trim(),
+        newPassword: resetForm.newPassword,
+      };
+      const response = await resetPassword(payload);
+
+      setLoginForm({
+        email: payload.email,
+        password: "",
+      });
+      setStatusMessage(
+        response.message || "Password reset successfully. You can sign in now.",
+      );
+      setMode("login");
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleLogout = async () => {
     if (processing) {
       return;
@@ -296,7 +394,7 @@ export default function AuthDialog({
           </div>
         ) : (
           <>
-            {mode !== "verify" ? (
+            {mode === "login" || mode === "register" ? (
               <div className="mb-6 grid grid-cols-2 rounded-md bg-stone-100 p-1">
                 <button
                   type="button"
@@ -321,7 +419,7 @@ export default function AuthDialog({
                   Register
                 </button>
               </div>
-            ) : (
+            ) : mode === "verify" ? (
               <button
                 type="button"
                 onClick={() => switchMode("register")}
@@ -329,6 +427,24 @@ export default function AuthDialog({
               >
                 <ArrowLeft size={16} />
                 Edit registration details
+              </button>
+            ) : mode === "forgot" ? (
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-950"
+              >
+                <ArrowLeft size={16} />
+                Back to login
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => switchMode("forgot")}
+                className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-950"
+              >
+                <ArrowLeft size={16} />
+                Edit email address
               </button>
             )}
 
@@ -389,6 +505,16 @@ export default function AuthDialog({
                   />
                 </label>
 
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={openForgotPassword}
+                    className="text-sm font-semibold text-stone-500 transition hover:text-stone-950"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
                 <button
                   type="submit"
                   disabled={processing}
@@ -398,6 +524,143 @@ export default function AuthDialog({
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : null}
                   Sign in
+                </button>
+              </form>
+            ) : null}
+
+            {mode === "forgot" ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                    <Mail size={14} />
+                    Email address
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={forgotForm.email}
+                    onChange={(event) =>
+                      setForgotForm({
+                        email: event.target.value,
+                      })
+                    }
+                    placeholder="name@example.com"
+                    className={inputClass}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-stone-950 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#D8C97B] hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Send OTP
+                </button>
+              </form>
+            ) : null}
+
+            {mode === "reset" ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                    <Mail size={14} />
+                    Email address
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={resetForm.email}
+                    onChange={(event) =>
+                      setResetForm((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    className={inputClass}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                    <KeyRound size={14} />
+                    OTP code
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={resetForm.otp}
+                    onChange={(event) =>
+                      setResetForm((current) => ({
+                        ...current,
+                        otp: event.target.value,
+                      }))
+                    }
+                    placeholder="123456"
+                    className={`${inputClass} text-center text-lg font-semibold tracking-[0.45em]`}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                    <KeyRound size={14} />
+                    New password
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={resetForm.newPassword}
+                    onChange={(event) =>
+                      setResetForm((current) => ({
+                        ...current,
+                        newPassword: event.target.value,
+                      }))
+                    }
+                    placeholder="At least 8 characters"
+                    className={inputClass}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                    <KeyRound size={14} />
+                    Confirm password
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={resetForm.confirmPassword}
+                    onChange={(event) =>
+                      setResetForm((current) => ({
+                        ...current,
+                        confirmPassword: event.target.value,
+                      }))
+                    }
+                    placeholder="Repeat your new password"
+                    className={inputClass}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-stone-950 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#D8C97B] hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Reset password
                 </button>
               </form>
             ) : null}

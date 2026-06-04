@@ -16,6 +16,16 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
 export interface AuthUser {
   id?: number | string;
   email?: string;
@@ -23,6 +33,11 @@ export interface AuthUser {
   name?: string;
   phone?: string;
   address?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  avatar?: string;
+  imageUrl?: string;
+  image_url?: string;
   [key: string]: unknown;
 }
 
@@ -40,10 +55,16 @@ export interface AuthResponse<TData = unknown> {
 }
 
 export const AUTH_SESSION_STORAGE_KEY = "webie_auth_session";
+export const AUTH_SESSION_UPDATED_EVENT = "webie_auth_session_updated";
 
 async function sendAuthRequest<TData>(
   path: string,
-  body?: RegisterPayload | VerifyOtpPayload | LoginPayload,
+  body?:
+    | RegisterPayload
+    | VerifyOtpPayload
+    | LoginPayload
+    | ForgotPasswordPayload
+    | ResetPasswordPayload,
 ): Promise<AuthResponse<TData>> {
   const response = await fetch(path, {
     method: "POST",
@@ -82,6 +103,14 @@ export function verifyOtp(payload: VerifyOtpPayload) {
 
 export function loginAccount(payload: LoginPayload) {
   return sendAuthRequest("/api/auth/login", payload);
+}
+
+export function forgotPassword(payload: ForgotPasswordPayload) {
+  return sendAuthRequest("/api/auth/forgot-password", payload);
+}
+
+export function resetPassword(payload: ResetPasswordPayload) {
+  return sendAuthRequest("/api/auth/reset-password", payload);
 }
 
 export function logoutAccount() {

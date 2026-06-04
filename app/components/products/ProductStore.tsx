@@ -3,12 +3,21 @@
 // components/product/ProductStore.tsx
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import type { ProductsResult } from "@/services/product";
+import type { ProductCategory, ProductsResult } from "@/services/product";
 
 interface ProductStoreProps {
   productsResult: ProductsResult;
+  categories: ProductCategory[];
+  selectedCategoryId: number | null;
+  selectedKeyword: string;
 }
 
 const priceFormatter = new Intl.NumberFormat("vi-VN", {
@@ -17,7 +26,14 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
-export default function ProductStore({ productsResult }: ProductStoreProps) {
+export default function ProductStore({
+  productsResult,
+  categories,
+  selectedCategoryId,
+  selectedKeyword,
+}: ProductStoreProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const products = productsResult.products;
   const pageSize = productsResult.limit > 0 ? productsResult.limit : 20;
   const totalPages = Math.max(1, Math.ceil(productsResult.total / pageSize));
@@ -28,19 +44,26 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = currentPage < totalPages;
   const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
-  const [selectedCategories, setSelectedCategories] = useState<string[] | null>(
-    null,
-  );
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(selectedKeyword);
 
-  const categoryNames = useMemo(() => {
-    return Array.from(
-      new Set(products
-          // .filter((product) => product.id !== 1)
-          .map((product) => product.category.name)),
-    );
-  }, [products]);
+  const categoryOptions = useMemo(() => {
+    const options = new Map<number, string>();
+
+    for (const category of categories) {
+      if (category.id > 0 && !options.has(category.id)) {
+        options.set(category.id, category.name);
+      }
+    }
+
+    for (const product of products) {
+      if (product.category.id > 0 && !options.has(product.category.id)) {
+        options.set(product.category.id, product.category.name);
+      }
+    }
+
+    return Array.from(options, ([id, name]) => ({ id, name }));
+  }, [categories, products]);
 
   const minCatalogPrice = useMemo(() => {
     return products.length
@@ -57,76 +80,96 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
   const effectiveMaxPrice = maxPrice ?? maxCatalogPrice;
 
   const filteredProducts = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
     return products.filter((product) => {
-      const matchesCategory =
-        selectedCategories === null ||
-        selectedCategories.includes(product.category.name);
-
-      //const isNotHiddenProduct = product.id !== 1;
-
-      const matchesPrice = product.price <= effectiveMaxPrice;
-      const searchableText = [
-        product.name,
-        product.description,
-        product.category.name,
-        product.sku ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = query.length === 0 || searchableText.includes(query);
-
-      return matchesCategory && matchesPrice && matchesSearch;
+      return product.price <= effectiveMaxPrice;
     });
-  }, [effectiveMaxPrice, products, searchQuery, selectedCategories]);
+  }, [effectiveMaxPrice, products]);
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((current) => {
-      const currentSelection = current ?? categoryNames;
-      const nextSelection = currentSelection.includes(category)
-        ? currentSelection.filter((item) => item !== category)
-        : [...currentSelection, category];
+  const getProductsHref = ({
+    page = 1,
+    categoryId = selectedCategoryId,
+    keyword = selectedKeyword,
+  }: {
+    page?: number;
+    categoryId?: number | null;
+    keyword?: string;
+  } = {}) => {
+    const params = new URLSearchParams();
+    const trimmedKeyword = keyword.trim();
 
-      return nextSelection.length === categoryNames.length ? null : nextSelection;
+    if (trimmedKeyword) {
+      params.set("keyword", trimmedKeyword);
+    } else if (categoryId) {
+      params.set("categoryId", String(categoryId));
+    }
+
+    if (page > 1) {
+      params.set("page", String(page));
+    }
+
+    const queryString = params.toString();
+
+    return queryString ? `/products?${queryString}` : "/products";
+  };
+
+  const toggleCategory = (categoryId: number) => {
+    const nextCategoryId =
+      selectedCategoryId === categoryId ? null : categoryId;
+
+    startTransition(() => {
+      router.push(
+        getProductsHref({ categoryId: nextCategoryId, keyword: "" }),
+      );
+    });
+  };
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    startTransition(() => {
+      router.push(
+        getProductsHref({
+          categoryId: null,
+          keyword: searchQuery.trim(),
+        }),
+      );
     });
   };
 
   const resetFilters = () => {
-    setSelectedCategories(null);
     setMaxPrice(null);
     setSearchQuery("");
+    startTransition(() => {
+      router.push("/products");
+    });
   };
 
   const handleAddToCart = (productName: string) => {
     alert(`Added to cart: ${productName}`);
   };
 
-  const getPageHref = (page: number) => {
-    return page === 1 ? "/products" : `/products?page=${page}`;
-  };
-
   return (
     <section className="bg-white pt-28 pb-20 md:pt-32">
       <div className="mx-auto max-w-[1500px] px-5 md:px-8">
         <div className="mb-10 border-b border-stone-200 pb-8">
-          <div className="relative max-w-2xl">
+          <form className="relative max-w-2xl" onSubmit={handleSearchSubmit}>
             <input
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search products by name, category, or description..."
+              placeholder="Search products by name..."
               className="w-full rounded-full border border-stone-300 bg-white px-6 py-4 pr-14 text-sm text-stone-800 outline-none transition focus:border-[#b39a42] focus:ring-2 focus:ring-[#b39a42]/20"
             />
 
             <button
-              type="button"
+              type="submit"
               aria-label="Search products"
+              disabled={isPending}
               className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-stone-950 text-white transition hover:bg-[#b39a42]"
             >
               <Search className="h-5 w-5" />
             </button>
-          </div>
+          </form>
         </div>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[260px_1fr]">
@@ -150,29 +193,28 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
                   Product type
                 </h3>
                 <div className="mt-5 space-y-4">
-                  {categoryNames.length === 0 ? (
+                  {categoryOptions.length === 0 ? (
                     <p className="text-sm text-stone-500">No categories found</p>
                   ) : (
-                    categoryNames.map((category) => {
-                      const checked =
-                        selectedCategories === null ||
-                        selectedCategories.includes(category);
+                    categoryOptions.map((category) => {
+                      const checked = selectedCategoryId === category.id;
 
                       return (
                         <label
-                          key={category}
+                          key={category.id}
                           className="flex cursor-pointer items-center gap-3 text-base text-stone-700"
                         >
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={() => toggleCategory(category)}
+                            disabled={isPending}
+                            onChange={() => toggleCategory(category.id)}
                             className="peer sr-only"
                           />
                           <span className="flex h-5 w-5 items-center justify-center border border-stone-400 bg-white text-white peer-checked:border-[#c9b879] peer-checked:bg-[#c9b879]">
                             {checked ? <Check className="h-3.5 w-3.5" /> : null}
                           </span>
-                          <span>{category}</span>
+                          <span>{category.name}</span>
                         </label>
                       );
                     })
@@ -221,11 +263,7 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
           <div>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500">
               <span>
-                Showing {filteredProducts.length} of {products.length} loaded
-                products
-                {productsResult.total > products.length
-                  ? ` (${productsResult.total} total)`
-                  : ""}
+                Showing {filteredProducts.length} of {productsResult.total}
               </span>
 
               {totalPages > 1 ? (
@@ -235,7 +273,7 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
                 >
                   {hasPreviousPage ? (
                     <Link
-                      href={getPageHref(currentPage - 1)}
+                      href={getProductsHref({ page: currentPage - 1 })}
                       aria-label="Previous page"
                       className="flex h-9 w-9 items-center justify-center text-stone-950 transition hover:text-[#b39a42]"
                     >
@@ -249,7 +287,7 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
                     return (
                       <Link
                         key={page}
-                        href={getPageHref(page)}
+                        href={getProductsHref({ page })}
                         aria-current={isCurrentPage ? "page" : undefined}
                         className={
                           isCurrentPage
@@ -264,7 +302,7 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
 
                   {hasNextPage ? (
                     <Link
-                      href={getPageHref(currentPage + 1)}
+                      href={getProductsHref({ page: currentPage + 1 })}
                       aria-label="Next page"
                       className="flex h-9 w-9 items-center justify-center text-stone-950 transition hover:text-[#b39a42]"
                     >
@@ -293,13 +331,15 @@ export default function ProductStore({ productsResult }: ProductStoreProps) {
                     className="group flex min-h-full flex-col border border-stone-200 bg-white p-5 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/60"
                   >
                     <div className="relative aspect-square overflow-hidden bg-stone-100">
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 360px"
-                        className="object-cover transition duration-500 group-hover:scale-105"
-                      />
+                      {/*<Image*/}
+                      {/*  src={product.image}*/}
+                      {/*  alt={product.name}*/}
+                      {/*  fill*/}
+                      {/*  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 360px"*/}
+                      {/*  className="object-cover transition duration-500 group-hover:scale-105"*/}
+                      {/*/>*/}
+                      <img src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
+                           className="w-100 img-fluid"/>
                     </div>
 
                     <div className="flex flex-1 flex-col pt-6">

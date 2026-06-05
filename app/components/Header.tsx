@@ -8,6 +8,11 @@ import { Menu, ShoppingCart, User, X } from "lucide-react";
 import AuthDialog from "./auth/AuthDialog";
 import { useStoredAuthSession } from "./auth/useStoredAuthSession";
 import { type AuthSession } from "@/services/auth";
+import {
+  CART_UPDATED_EVENT,
+  CartApiError,
+  getCartItems,
+} from "@/services/cart";
 
 const productCategories = [
   {
@@ -76,7 +81,13 @@ export default function Header() {
     null,
   );
   const [isScrolled, setIsScrolled] = useState(false);
-  const { authSession, clearSession, persistSession } = useStoredAuthSession();
+  const [cartItemCount, setCartItemCount] = useState(0);
+  const {
+    authSession,
+    clearSession,
+    persistSession,
+    sessionReady,
+  } = useStoredAuthSession();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,6 +101,59 @@ export default function Header() {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (!sessionReady) {
+      return;
+    }
+
+    if (!authSession) {
+      const resetCartCountId = window.setTimeout(() => {
+        setCartItemCount(0);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(resetCartCountId);
+      };
+    }
+
+    let cancelled = false;
+
+    const loadCartCount = async () => {
+      try {
+        const items = await getCartItems();
+
+        if (cancelled) {
+          return;
+        }
+
+        setCartItemCount(
+          items.reduce((total, item) => total + item.quantity, 0),
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        if (error instanceof CartApiError && error.status === 401) {
+          setCartItemCount(0);
+          clearSession();
+        }
+      }
+    };
+
+    const handleCartUpdated = () => {
+      void loadCartCount();
+    };
+
+    void loadCartCount();
+    window.addEventListener(CART_UPDATED_EVENT, handleCartUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(CART_UPDATED_EVENT, handleCartUpdated);
+    };
+  }, [authSession, clearSession, sessionReady]);
 
   const openAuthDialog = (redirectPath: string | null = null) => {
     setMobileOpen(false);
@@ -126,6 +190,13 @@ export default function Header() {
 
   const accountLabel = authSession?.fullName || authSession?.email || "Sign in";
   const avatarUrl = getSessionAvatarUrl(authSession);
+  const cartItemCountLabel = cartItemCount > 99 ? "99+" : String(cartItemCount);
+  const cartAriaLabel =
+    cartItemCount > 0
+      ? `Shopping cart and payment, ${cartItemCount} item${
+          cartItemCount === 1 ? "" : "s"
+        }`
+      : "Shopping cart and payment";
 
   return (
     <>
@@ -207,11 +278,15 @@ export default function Header() {
             <button
               type="button"
               onClick={handleCartClick}
-              aria-label="Shopping cart and payment"
+              aria-label={cartAriaLabel}
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-all duration-200 hover:bg-stone-50/50 hover:text-[#D8C97B]"
             >
               <ShoppingCart size={20} />
-              <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#D8C97B]" />
+              {cartItemCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#D8C97B] px-1.5 text-[10px] font-bold leading-none text-stone-950 shadow-sm">
+                  {cartItemCountLabel}
+                </span>
+              ) : null}
             </button>
           </div>
 
@@ -289,10 +364,15 @@ export default function Header() {
               <button
                 type="button"
                 onClick={handleCartClick}
-                aria-label="Shopping cart and payment"
-                className="flex w-12 items-center justify-center rounded border border-stone-200 text-stone-600 transition-colors hover:text-[#D8C97B]"
+                aria-label={cartAriaLabel}
+                className="relative flex w-12 items-center justify-center rounded border border-stone-200 text-stone-600 transition-colors hover:text-[#D8C97B]"
               >
                 <ShoppingCart size={20} />
+                {cartItemCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[#D8C97B] px-1.5 text-[10px] font-bold leading-none text-stone-950 shadow-sm">
+                    {cartItemCountLabel}
+                  </span>
+                ) : null}
               </button>
             </div>
           </div>

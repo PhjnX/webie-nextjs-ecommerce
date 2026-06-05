@@ -6,4 +6,20 @@
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
+@keyframes related-scroll {
+  from {
+    transform: translateX(0);
+  }
 
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.related-scroll-track {
+  animation: related-scroll 50s linear infinite;
+}
+
+.related-scroll-track:hover {
+  animation-play-state: paused;
+}

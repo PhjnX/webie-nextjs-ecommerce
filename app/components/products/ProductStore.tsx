@@ -333,15 +333,18 @@ export default function ProductStore({
             ) : (
               <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
                 {filteredProducts.map((product) => (
-                    <article
-                        key={product.id}
-                        className="group flex min-h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm shadow-stone-200/50 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/70"
+                  <article
+                    key={product.id}
+                    className="group flex min-h-full flex-col overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm shadow-stone-200/50 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/70"
+                  >
+                    <Link
+                      href={`/products/${product.id}`}
+                      className="flex flex-1 flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f2bf35] focus-visible:ring-offset-2"
                     >
                       <div className="relative aspect-[3/4] overflow-hidden bg-stone-100">
-                      <span
-                          className="absolute left-5 top-5 z-10 max-w-[calc(100%-2.5rem)] truncate rounded-full bg-[#f2bf35] px-4 py-2 text-xs font-bold text-[#5f4a0a] shadow-sm">
-                        {product.category.name}
-                      </span>
+                        <span className="absolute left-5 top-5 z-10 max-w-[calc(100%-2.5rem)] truncate rounded-full bg-[#f2bf35] px-4 py-2 text-xs font-bold text-[#5f4a0a] shadow-sm">
+                          {product.category.name}
+                        </span>
                         {/*<Image*/}
                         {/*  src={product.image}*/}
                         {/*  alt={product.name}*/}
@@ -355,18 +358,21 @@ export default function ProductStore({
                         />
                       </div>
 
-                      <div className="flex flex-1 flex-col p-7">
-                      <h2 className="text-2xl font-bold leading-tight text-stone-950">
-                        {product.name}
-                      </h2>
-                      <p className="mt-2 font-mono text-lg font-bold text-[#6f4f00]">
-                        {priceFormatter.format(product.price)}
-                      </p>
+                      <div className="flex flex-1 flex-col p-7 pb-5">
+                        <h2 className="text-2xl font-bold leading-tight text-stone-950 transition group-hover:text-[#6f4f00]">
+                          {product.name}
+                        </h2>
+                        <p className="mt-2 font-mono text-lg font-bold text-[#6f4f00]">
+                          {priceFormatter.format(product.price)}
+                        </p>
+                      </div>
+                    </Link>
 
+                    <div className="px-7 pb-7">
                       <button
                         type="button"
                         onClick={() => handleAddToCart(product.name)}
-                        className="mt-auto rounded-lg bg-[#f2bf35] px-5 py-4 text-sm font-bold text-[#5f4a0a] transition hover:bg-stone-950 hover:text-white"
+                        className="w-full rounded-lg bg-[#f2bf35] px-5 py-4 text-sm font-bold text-[#5f4a0a] transition hover:bg-stone-950 hover:text-white"
                       >
                         Add to Cart
                       </button>

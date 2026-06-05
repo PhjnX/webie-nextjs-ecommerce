@@ -41,6 +41,7 @@ interface ApiProduct {
   sku?: string | null;
   stock?: number | null;
   image_url?: string | null;
+  image_base64?: string | null;
 }
 
 interface ProductsApiResponse {
@@ -50,6 +51,17 @@ interface ProductsApiResponse {
   data?: ApiProduct[];
 }
 
+interface ProductApiResponse {
+  data?: ApiProduct | ApiProduct[];
+  product?: ApiProduct | null;
+}
+
+type ProductApiResponsePayload =
+  | ProductsApiResponse
+  | ProductApiResponse
+  | ApiProduct[]
+  | ApiProduct;
+
 const PRODUCTS_API_URL =
   process.env.PRODUCTS_API_URL ??
   "https://coral-mouse-470858.hostingersite.com/odoo/products";
@@ -58,6 +70,44 @@ const PRODUCTS_API_BASE_URL = PRODUCTS_API_URL.replace(/\/+$/, "");
 const FALLBACK_DESCRIPTION = "No description available yet.";
 const FALLBACK_IMAGE = "/images/services/website-templates.png";
 const FALLBACK_DEMO_URL = "https://vcard.webie.com.vn";
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isApiProduct(value: unknown): value is ApiProduct {
+  return isObject(value) && typeof value.id === "number";
+}
+
+function getProductsFromApiResponse(
+  result: ProductApiResponsePayload,
+): ApiProduct[] {
+  if (Array.isArray(result)) {
+    return result.filter(isApiProduct);
+  }
+
+  if (isApiProduct(result)) {
+    return [result];
+  }
+
+  if (!isObject(result)) {
+    return [];
+  }
+
+  if (Array.isArray(result.data)) {
+    return result.data.filter(isApiProduct);
+  }
+
+  if (isApiProduct(result.data)) {
+    return [result.data];
+  }
+
+  if (isApiProduct(result.product)) {
+    return [result.product];
+  }
+
+  return [];
+}
 
 function buildProductsUrl({
   offset,
@@ -91,6 +141,10 @@ function buildProductsUrl({
   url.searchParams.set("limit", String(limit));
 
   return url.toString();
+}
+
+function buildProductDetailUrl(productId: number) {
+  return `${PRODUCTS_API_BASE_URL}/${encodeURIComponent(productId)}`;
 }
 
 function mapProduct(item: ApiProduct): Product {
@@ -143,10 +197,7 @@ export async function getProducts({
     }
 
     const result = (await res.json()) as ProductsApiResponse | ApiProduct[];
-    const productsData = Array.isArray(result) ? result : result.data;
-    const products = Array.isArray(productsData)
-      ? productsData.map(mapProduct)
-      : [];
+    const products = getProductsFromApiResponse(result).map(mapProduct);
 
     return {
       products,
@@ -167,6 +218,41 @@ export async function getProducts({
       offset,
     };
   }
+}
+
+export async function getProductById(
+  productId: number,
+): Promise<Product | null> {
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return null;
+  }
+
+  try {
+    const res = await fetch(buildProductDetailUrl(productId), {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (res.ok) {
+      const result = (await res.json()) as ProductApiResponsePayload;
+      const product = getProductsFromApiResponse(result)
+        .map(mapProduct)
+        .find((item) => item.id === productId);
+
+      if (product) {
+        return product;
+      }
+    }
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Error fetching product detail:", error);
+  }
+
+  const result = await getProducts({ offset: 0, limit: 100 });
+
+  return result.products.find((product) => product.id === productId) ?? null;
 }
 
 export async function getProductCategories(): Promise<ProductCategory[]> {

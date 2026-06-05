@@ -2,66 +2,247 @@
 
 // components/payment/PaymentCheckout.tsx
 import Image from "next/image";
-import { type FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ArrowRight,
   BadgeHelp,
   CreditCard,
   Landmark,
+  Loader2,
   Lock,
   ShieldCheck,
+  ShoppingBag,
+  Trash2,
   Wallet,
+  X,
 } from "lucide-react";
+import AuthDialog from "@/app/components/auth/AuthDialog";
+import { useStoredAuthSession } from "@/app/components/auth/useStoredAuthSession";
+import { type AuthSession } from "@/services/auth";
+import {
+  type CartItem,
+  CartApiError,
+  clearCart,
+  deleteCartItem,
+  getCartItems,
+} from "@/services/cart";
 
 type PaymentMethod = "card" | "paypal" | "bank";
-
-const orderItems = [
-  {
-    id: 1,
-    name: "Signature vCard 01",
-    description: "Personalized Digital Identity",
-    qty: 1,
-    price: 245,
-    image: "/images/services/website-templates.png",
-  },
-  {
-    id: 2,
-    name: "Personal Greeting Suite",
-    description: "Custom Greeting Card Add-on",
-    qty: 1,
-    price: 85,
-    image: "/images/services/personalized-greeting-cards.png",
-  },
-];
 
 const inputClass =
   "h-14 w-full rounded-md border border-stone-200 bg-[#f8f5f4] px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-stone-500 focus:bg-white";
 
+const priceFormatter = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unexpected cart error.";
+}
+
+function parseCartPrice(value: string) {
+  const price = Number(value);
+
+  return Number.isFinite(price) ? price : 0;
+}
+
+function getSessionValue(session: AuthSession | null, keys: string[]) {
+  const user = session?.user;
+
+  for (const key of keys) {
+    const value =
+      key === "email"
+        ? session?.email
+        : key === "fullName"
+          ? session?.fullName
+          : user?.[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
+
 export default function PaymentCheckout() {
+  const {
+    authSession,
+    clearSession,
+    persistSession,
+    sessionReady,
+  } = useStoredAuthSession();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [processing, setProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState("");
+  const [clearing, setClearing] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(
+    null,
+  );
+
+  const loadCart = useCallback(async () => {
+    if (!sessionReady) {
+      return;
+    }
+
+    if (!authSession) {
+      setCartItems([]);
+      setCartLoading(false);
+      setAuthDialogOpen(true);
+      return;
+    }
+
+    setCartLoading(true);
+    setCartError("");
+
+    try {
+      const items = await getCartItems();
+
+      setCartItems(items);
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        clearSession();
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setCartLoading(false);
+    }
+  }, [authSession, clearSession, sessionReady]);
+
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => {
+      void loadCart();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(loadTimer);
+    };
+  }, [loadCart]);
 
   const totals = useMemo(() => {
-    const subtotal = orderItems.reduce(
-      (total, item) => total + item.price * item.qty,
+    const subtotal = cartItems.reduce(
+      (total, item) =>
+        total + parseCartPrice(item.productPrice) * item.quantity,
       0,
     );
-    const shipping = 18;
-    const tax = 24.75;
+    const quantity = cartItems.reduce((total, item) => total + item.quantity, 0);
 
     return {
+      quantity,
       subtotal,
-      shipping,
-      tax,
-      total: subtotal + shipping + tax,
+      total: subtotal,
     };
-  }, []);
+  }, [cartItems]);
+
+  const customerDefaults = useMemo(
+    () => ({
+      address: getSessionValue(authSession, ["address"]),
+      email: getSessionValue(authSession, ["email"]),
+      fullName: getSessionValue(authSession, ["fullName", "name"]),
+      phone: getSessionValue(authSession, [
+        "phone",
+        "phoneNumber",
+        "phone_number",
+      ]),
+    }),
+    [authSession],
+  );
+
+  const handleAuthenticated = (session: AuthSession) => {
+    persistSession(session);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setCartItems([]);
+    setAuthDialogOpen(true);
+  };
+
+  const handleClearCart = async () => {
+    if (clearing) {
+      return;
+    }
+
+    setClearing(true);
+    setCartError("");
+    setStatusMessage("");
+
+    try {
+      const message = await clearCart();
+
+      setCartItems([]);
+      setStatusMessage(message || "Cart cleared successfully.");
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        clearSession();
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleDeleteCartItem = async (id: number) => {
+    if (deletingItemId === id) {
+      return;
+    }
+
+    setDeletingItemId(id);
+    setCartError("");
+    setStatusMessage("");
+
+    try {
+      const result = await deleteCartItem(id);
+
+      setCartItems((currentItems) =>
+        result.items.length > 0
+          ? result.items
+          : currentItems.filter((item) => item.id !== id),
+      );
+      setStatusMessage(result.message || "Cart item removed successfully.");
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        clearSession();
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setDeletingItemId(null);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (processing) {
+      return;
+    }
+
+    if (!authSession) {
+      setAuthDialogOpen(true);
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      setStatusMessage("Your cart is empty.");
       return;
     }
 
@@ -81,6 +262,7 @@ export default function PaymentCheckout() {
   return (
     <section className="min-h-screen bg-white pt-28 pb-20 md:pt-32">
       <form
+        key={authSession?.email ?? "guest"}
         onSubmit={handleSubmit}
         className="mx-auto max-w-[1180px] px-6 lg:px-8"
       >
@@ -94,8 +276,8 @@ export default function PaymentCheckout() {
             Finalize Your Order
           </h1>
           <p className="mt-3 max-w-2xl text-lg leading-relaxed text-stone-600">
-            Review your personalized selections, add customer information, and
-            choose a preferred payment method to complete your purchase.
+            Review your cart items, confirm customer information, and choose a
+            payment method to complete your purchase.
           </p>
         </div>
 
@@ -105,6 +287,24 @@ export default function PaymentCheckout() {
               <Lock size={18} aria-hidden="true" />
               Secure Checkout Protocol Active
             </div>
+
+            {!authSession && sessionReady ? (
+              <section className="mb-9 rounded-lg border border-stone-200 bg-stone-50 p-6">
+                <h2 className="text-2xl font-semibold text-stone-950">
+                  Sign in to view your cart
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
+                  Cart details are connected to your account.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAuthDialogOpen(true)}
+                  className="mt-5 h-12 rounded-md bg-stone-950 px-5 text-sm font-bold uppercase tracking-[0.16em] text-white transition hover:bg-[#916061]"
+                >
+                  Log in
+                </button>
+              </section>
+            ) : null}
 
             <section className="border-b border-stone-100 pb-9">
               <div className="mb-6 flex items-center justify-between">
@@ -130,7 +330,8 @@ export default function PaymentCheckout() {
                     type="text"
                     autoComplete="name"
                     required
-                    placeholder="Elara Vance"
+                    defaultValue={customerDefaults.fullName}
+                    placeholder="Enter your full name"
                     className={inputClass}
                   />
                 </div>
@@ -147,7 +348,8 @@ export default function PaymentCheckout() {
                     type="email"
                     autoComplete="email"
                     required
-                    placeholder="elara.vance@studio.com"
+                    defaultValue={customerDefaults.email}
+                    placeholder="name@example.com"
                     className={inputClass}
                   />
                 </div>
@@ -164,7 +366,8 @@ export default function PaymentCheckout() {
                     type="tel"
                     autoComplete="tel"
                     required
-                    placeholder="+1 555 0140"
+                    defaultValue={customerDefaults.phone}
+                    placeholder="+84 900 000 000"
                     className={inputClass}
                   />
                 </div>
@@ -181,7 +384,8 @@ export default function PaymentCheckout() {
                     type="text"
                     autoComplete="street-address"
                     required
-                    placeholder="742 Heritage Oaks Lane"
+                    defaultValue={customerDefaults.address}
+                    placeholder="Enter your billing address"
                     className={inputClass}
                   />
                 </div>
@@ -198,7 +402,7 @@ export default function PaymentCheckout() {
                     type="text"
                     autoComplete="address-level2"
                     required
-                    placeholder="Savannah"
+                    placeholder="Ho Chi Minh City"
                     className={inputClass}
                   />
                 </div>
@@ -215,7 +419,7 @@ export default function PaymentCheckout() {
                     type="text"
                     autoComplete="country-name"
                     required
-                    placeholder="United States"
+                    placeholder="Vietnam"
                     className={inputClass}
                   />
                 </div>
@@ -330,38 +534,110 @@ export default function PaymentCheckout() {
           </div>
 
           <aside className="rounded-2xl bg-[#f8f3f2] p-8 shadow-xl shadow-stone-200/50 lg:sticky lg:top-28">
-            <h2 className="text-2xl font-semibold text-stone-950">
-              Order Summary
-            </h2>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-stone-950">
+                  Order Summary
+                </h2>
+                <p className="mt-1 text-sm text-stone-500">
+                  {totals.quantity} item{totals.quantity === 1 ? "" : "s"}
+                </p>
+              </div>
+              {cartItems.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleClearCart}
+                  disabled={clearing}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-stone-500 transition hover:bg-white hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Clear cart"
+                >
+                  {clearing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 size={17} />
+                  )}
+                </button>
+              ) : null}
+            </div>
 
             <div className="mt-7 space-y-5">
-              {orderItems.map((item) => (
-                <div key={item.id} className="grid grid-cols-[86px_1fr] gap-4">
-                  <div className="relative h-24 overflow-hidden rounded-md bg-stone-100">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="86px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold leading-snug text-stone-950">
-                      {item.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-stone-500">
-                      {item.description}
-                    </p>
-                    <p className="mt-1 text-sm text-[#916061]">
-                      Qty: {item.qty}
-                    </p>
-                    <p className="mt-2 text-sm font-bold text-stone-950">
-                      ${item.price.toFixed(2)}
-                    </p>
-                  </div>
+              {cartLoading ? (
+                <div className="flex items-center gap-3 rounded-md bg-white px-4 py-5 text-sm font-medium text-stone-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading cart...
                 </div>
-              ))}
+              ) : cartError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-4 text-sm font-medium text-red-700">
+                  {cartError}
+                </div>
+              ) : cartItems.length === 0 ? (
+                <div className="rounded-md border border-stone-200 bg-white px-4 py-7 text-center">
+                  <ShoppingBag className="mx-auto h-8 w-8 text-stone-400" />
+                  <h3 className="mt-3 text-base font-semibold text-stone-950">
+                    Your cart is empty
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-500">
+                    Add a product before checkout.
+                  </p>
+                  <Link
+                    href="/products"
+                    className="mt-5 inline-flex h-11 items-center rounded-md bg-stone-950 px-4 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#916061]"
+                  >
+                    Browse products
+                  </Link>
+                </div>
+              ) : (
+                cartItems.map((item) => {
+                  const itemTotal =
+                    parseCartPrice(item.productPrice) * item.quantity;
+
+                  return (
+                    <div
+                      key={`${item.id}-${item.productId}`}
+                      className="grid grid-cols-[86px_1fr_32px] gap-4"
+                    >
+                      <div className="relative h-24 overflow-hidden rounded-md bg-stone-100">
+                        <Image
+                          src={item.productImageUrl}
+                          alt={item.productName}
+                          fill
+                          sizes="86px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold leading-snug text-stone-950">
+                          {item.productName}
+                        </h3>
+                        {item.productSku ? (
+                          <p className="mt-1 text-xs uppercase tracking-wide text-stone-400">
+                            SKU: {item.productSku}
+                          </p>
+                        ) : null}
+                        <p className="mt-1 text-sm text-[#916061]">
+                          Qty: {item.quantity}
+                        </p>
+                        <p className="mt-2 text-sm font-bold text-stone-950">
+                          {priceFormatter.format(itemTotal)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCartItem(item.id)}
+                        disabled={deletingItemId === item.id}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition hover:bg-white hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Remove ${item.productName} from cart`}
+                      >
+                        {deletingItemId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <X size={16} />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div className="mt-8 border-t border-stone-200 pt-7">
@@ -369,18 +645,8 @@ export default function PaymentCheckout() {
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span className="text-stone-950">
-                    ${totals.subtotal.toFixed(2)}
+                    {priceFormatter.format(totals.subtotal)}
                   </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping (Express)</span>
-                  <span className="text-stone-950">
-                    ${totals.shipping.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Estimated Tax</span>
-                  <span className="text-stone-950">${totals.tax.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -389,13 +655,13 @@ export default function PaymentCheckout() {
                   Total
                 </span>
                 <span className="text-3xl font-semibold text-stone-950">
-                  ${totals.total.toFixed(2)}
+                  {priceFormatter.format(totals.total)}
                 </span>
               </div>
 
               <button
                 type="submit"
-                disabled={processing}
+                disabled={processing || cartLoading || cartItems.length === 0}
                 className="mt-7 flex h-14 w-full items-center justify-center gap-2 rounded-md bg-stone-900 text-sm font-bold text-white transition hover:bg-[#916061] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {processing ? "Processing..." : "Place Order"}
@@ -414,6 +680,14 @@ export default function PaymentCheckout() {
           </aside>
         </div>
       </form>
+
+      <AuthDialog
+        open={authDialogOpen}
+        session={authSession}
+        onClose={() => setAuthDialogOpen(false)}
+        onAuthenticated={handleAuthenticated}
+        onLogout={handleLogout}
+      />
     </section>
   );
 }

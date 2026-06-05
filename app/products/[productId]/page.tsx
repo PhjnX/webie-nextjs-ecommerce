@@ -5,13 +5,10 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
-  Brush,
   Code2,
   FileText,
   PackageCheck,
-  RefreshCcw,
   ShieldCheck,
-  Zap,
 } from "lucide-react";
 import {
   ProductDetailActions,
@@ -175,6 +172,7 @@ export default async function ProductDetailPage({
               {/*/>*/}
               <img
                   src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
+                  alt={product.name}
                   className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
               />
 
@@ -368,7 +366,10 @@ export default async function ProductDetailPage({
                       </Link>
 
                       <div className="px-4 pb-4">
-                        <RelatedProductAddButton productName={relatedProduct.name} />
+                        <RelatedProductAddButton
+                            productId={relatedProduct.id}
+                            productName={relatedProduct.name}
+                        />
                       </div>
                     </article>
                 ))}

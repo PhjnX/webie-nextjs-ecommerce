@@ -1,7 +1,6 @@
 "use client";
 
 // components/product/ProductStore.tsx
-import Image from "next/image";
 import Link from "next/link";
 import {
   useMemo,
@@ -11,6 +10,10 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import AuthDialog from "@/app/components/auth/AuthDialog";
+import { useStoredAuthSession } from "@/app/components/auth/useStoredAuthSession";
+import { addCartItem, CartApiError } from "@/services/cart";
+import { type AuthSession } from "@/services/auth";
 import type { ProductCategory, ProductsResult } from "@/services/product";
 
 interface ProductStoreProps {
@@ -32,12 +35,22 @@ const Categories = [
   { id: 10, name: "Greeting Card" },
 ];
 
+type PendingCartProduct = {
+  id: number;
+  name: string;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unexpected cart error.";
+}
+
 export default function ProductStore({
   productsResult,
   selectedCategoryId,
   selectedKeyword,
 }: ProductStoreProps) {
   const router = useRouter();
+  const { authSession, clearSession, persistSession } = useStoredAuthSession();
   const [isPending, startTransition] = useTransition();
   const products = productsResult.products;
   const pageSize = productsResult.limit > 0 ? productsResult.limit : 20;
@@ -51,6 +64,12 @@ export default function ProductStore({
   const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState(selectedKeyword);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [pendingProduct, setPendingProduct] =
+    useState<PendingCartProduct | null>(null);
+  const [addingProductId, setAddingProductId] = useState<number | null>(null);
+  const [cartMessage, setCartMessage] = useState("");
+  const [cartError, setCartError] = useState("");
 
   // const categoryOptions = useMemo(() => {
   //   const options = new Map<number, string>();
@@ -151,11 +170,54 @@ export default function ProductStore({
     });
   };
 
-  const handleAddToCart = (productName: string) => {
-    alert(`Added to cart: ${productName}`);
+  const addProductToCart = async (product: PendingCartProduct) => {
+    if (addingProductId === product.id) {
+      return;
+    }
+
+    setAddingProductId(product.id);
+    setCartError("");
+    setCartMessage("");
+
+    try {
+      await addCartItem(product.id);
+      setPendingProduct(null);
+      setCartMessage(`${product.name} added to cart.`);
+      window.setTimeout(() => setCartMessage(""), 2500);
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        clearSession();
+        setPendingProduct(product);
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setAddingProductId(null);
+    }
+  };
+
+  const handleAddToCart = (product: PendingCartProduct) => {
+    if (!authSession) {
+      setPendingProduct(product);
+      setCartError("");
+      setAuthDialogOpen(true);
+      return;
+    }
+
+    void addProductToCart(product);
+  };
+
+  const handleAuthenticated = (session: AuthSession) => {
+    persistSession(session);
+
+    if (pendingProduct) {
+      void addProductToCart(pendingProduct);
+    }
   };
 
   return (
+    <>
     <section className="bg-white pt-28 pb-20 md:pt-32">
       <div className="mx-auto max-w-[1500px] px-5 md:px-8">
         <div className="mb-10 border-b border-stone-200 pb-8">
@@ -320,6 +382,18 @@ export default function ProductStore({
               ) : null}
             </div>
 
+            {cartMessage ? (
+              <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                {cartMessage}
+              </div>
+            ) : null}
+
+            {cartError ? (
+              <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {cartError}
+              </div>
+            ) : null}
+
             {filteredProducts.length === 0 ? (
               <div className="border border-stone-200 bg-stone-50 p-12 text-center">
                 <h2 className="text-2xl font-semibold text-stone-950">
@@ -354,6 +428,7 @@ export default function ProductStore({
                         {/*/>*/}
                         <img
                             src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
+                            alt={product.name}
                             className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
                         />
                       </div>
@@ -371,10 +446,18 @@ export default function ProductStore({
                     <div className="px-7 pb-7">
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(product.name)}
+                        onClick={() =>
+                          handleAddToCart({
+                            id: product.id,
+                            name: product.name,
+                          })
+                        }
+                        disabled={addingProductId === product.id}
                         className="w-full rounded-lg bg-[#f2bf35] px-5 py-4 text-sm font-bold text-[#5f4a0a] transition hover:bg-stone-950 hover:text-white"
                       >
-                        Add to Cart
+                        {addingProductId === product.id
+                          ? "Adding..."
+                          : "Add to Cart"}
                       </button>
                     </div>
                   </article>
@@ -385,5 +468,13 @@ export default function ProductStore({
         </div>
       </div>
     </section>
+    <AuthDialog
+      open={authDialogOpen}
+      session={authSession}
+      onClose={() => setAuthDialogOpen(false)}
+      onAuthenticated={handleAuthenticated}
+      onLogout={clearSession}
+    />
+    </>
   );
 }

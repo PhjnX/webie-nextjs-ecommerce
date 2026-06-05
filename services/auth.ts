@@ -57,6 +57,47 @@ export interface AuthResponse<TData = unknown> {
 export const AUTH_SESSION_STORAGE_KEY = "webie_auth_session";
 export const AUTH_SESSION_UPDATED_EVENT = "webie_auth_session_updated";
 
+export function readStoredAuthSession(): AuthSession | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storedSession = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+
+  if (!storedSession) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedSession) as AuthSession;
+  } catch {
+    window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+
+    return null;
+  }
+}
+
+export function storeAuthSession(session: AuthSession) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    AUTH_SESSION_STORAGE_KEY,
+    JSON.stringify(session),
+  );
+  window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+}
+
+export function clearStoredAuthSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+}
+
 async function sendAuthRequest<TData>(
   path: string,
   body?:

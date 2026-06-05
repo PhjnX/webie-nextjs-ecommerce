@@ -6,11 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, ShoppingCart, User, X } from "lucide-react";
 import AuthDialog from "./auth/AuthDialog";
-import {
-  AUTH_SESSION_STORAGE_KEY,
-  AUTH_SESSION_UPDATED_EVENT,
-  type AuthSession,
-} from "@/services/auth";
+import { useStoredAuthSession } from "./auth/useStoredAuthSession";
+import { type AuthSession } from "@/services/auth";
 
 const productCategories = [
   {
@@ -75,78 +72,56 @@ export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [redirectToProfileAfterLogin, setRedirectToProfileAfterLogin] =
-    useState(false);
+  const [redirectAfterLogin, setRedirectAfterLogin] = useState<string | null>(
+    null,
+  );
   const [isScrolled, setIsScrolled] = useState(false);
-  const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const { authSession, clearSession, persistSession } = useStoredAuthSession();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
-    const loadStoredSession = () => {
-      const storedSession = window.localStorage.getItem(
-        AUTH_SESSION_STORAGE_KEY,
-      );
-
-      if (storedSession) {
-        try {
-          setAuthSession(JSON.parse(storedSession) as AuthSession);
-        } catch {
-          window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
-          setAuthSession(null);
-        }
-
-        return;
-      }
-
-      setAuthSession(null);
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === AUTH_SESSION_STORAGE_KEY) {
-        loadStoredSession();
-      }
-    };
-    const sessionLoadId = window.setTimeout(loadStoredSession, 0);
 
     handleScroll();
     window.addEventListener("scroll", handleScroll);
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener(AUTH_SESSION_UPDATED_EVENT, loadStoredSession);
 
     return () => {
-      window.clearTimeout(sessionLoadId);
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(AUTH_SESSION_UPDATED_EVENT, loadStoredSession);
     };
   }, []);
 
-  const openAuthDialog = (redirectToProfile = false) => {
+  const openAuthDialog = (redirectPath: string | null = null) => {
     setMobileOpen(false);
-    setRedirectToProfileAfterLogin(redirectToProfile);
+    setRedirectAfterLogin(redirectPath);
     setAuthDialogOpen(true);
   };
 
-  const handleAuthenticated = (session: AuthSession) => {
-    setAuthSession(session);
-    window.localStorage.setItem(
-      AUTH_SESSION_STORAGE_KEY,
-      JSON.stringify(session),
-    );
-    window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+  const handleCartClick = () => {
+    setMobileOpen(false);
 
-    if (redirectToProfileAfterLogin) {
-      setRedirectToProfileAfterLogin(false);
-      router.push("/profile");
+    if (!authSession) {
+      openAuthDialog("/payment");
+      return;
+    }
+
+    router.push("/payment");
+  };
+
+  const handleAuthenticated = (session: AuthSession) => {
+    persistSession(session);
+
+    if (redirectAfterLogin) {
+      const nextPath = redirectAfterLogin;
+
+      setRedirectAfterLogin(null);
+      router.push(nextPath);
     }
   };
 
   const handleLogout = () => {
-    setRedirectToProfileAfterLogin(false);
-    setAuthSession(null);
-    window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
-    window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+    setRedirectAfterLogin(null);
+    clearSession();
   };
 
   const accountLabel = authSession?.fullName || authSession?.email || "Sign in";
@@ -214,7 +189,7 @@ export default function Header() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => openAuthDialog(true)}
+                  onClick={() => openAuthDialog("/profile")}
                   className="flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-all duration-200 hover:bg-stone-50/50 hover:text-[#D8C97B]"
                   aria-label="Account"
                 >
@@ -229,14 +204,15 @@ export default function Header() {
 
             <div className="h-5 w-px bg-stone-200/50" />
 
-            <Link
-              href="/payment"
+            <button
+              type="button"
+              onClick={handleCartClick}
               aria-label="Shopping cart and payment"
               className="relative flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-all duration-200 hover:bg-stone-50/50 hover:text-[#D8C97B]"
             >
               <ShoppingCart size={20} />
               <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#D8C97B]" />
-            </Link>
+            </button>
           </div>
 
           <button
@@ -303,21 +279,21 @@ export default function Header() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => openAuthDialog(true)}
+                  onClick={() => openAuthDialog("/profile")}
                   className="flex flex-1 items-center justify-center gap-2 rounded border border-stone-200 py-3 text-center text-xs font-semibold uppercase tracking-widest text-stone-600 transition-colors hover:text-[#D8C97B]"
                 >
                   <User size={16} />
                   Log in
                 </button>
               )}
-              <Link
-                href="/payment"
-                onClick={() => setMobileOpen(false)}
+              <button
+                type="button"
+                onClick={handleCartClick}
                 aria-label="Shopping cart and payment"
                 className="flex w-12 items-center justify-center rounded border border-stone-200 text-stone-600 transition-colors hover:text-[#D8C97B]"
               >
                 <ShoppingCart size={20} />
-              </Link>
+              </button>
             </div>
           </div>
         ) : null}

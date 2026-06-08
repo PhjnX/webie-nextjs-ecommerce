@@ -267,11 +267,6 @@ export default function PaymentCheckout() {
         className="mx-auto max-w-[1180px] px-6 lg:px-8"
       >
         <div className="mb-12">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-stone-500">
-            Cart <span className="mx-1 text-stone-300">&gt;</span> Information{" "}
-            <span className="mx-1 text-stone-300">&gt;</span>{" "}
-            <span className="text-stone-950">Review &amp; Payment</span>
-          </p>
           <h1 className="mt-5 text-4xl font-semibold leading-tight text-stone-950 md:text-5xl">
             Finalize Your Order
           </h1>

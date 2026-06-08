@@ -419,17 +419,10 @@ export default function ProductStore({
                         <span className="absolute left-5 top-5 z-10 max-w-[calc(100%-2.5rem)] truncate rounded-full bg-[#f2bf35] px-4 py-2 text-xs font-bold text-[#5f4a0a] shadow-sm">
                           {product.category.name}
                         </span>
-                        {/*<Image*/}
-                        {/*  src={product.image}*/}
-                        {/*  alt={product.name}*/}
-                        {/*  fill*/}
-                        {/*  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 360px"*/}
-                        {/*  className="object-cover object-top transition-[object-position,transform] duration-[4500ms] ease-in-out group-hover:scale-[1.02] group-hover:object-bottom motion-reduce:transition-none motion-reduce:group-hover:scale-100"*/}
-                        {/*/>*/}
                         <img
-                            src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
-                            alt={product.name}
-                            className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
                         />
                       </div>
 

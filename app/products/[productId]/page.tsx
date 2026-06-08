@@ -162,19 +162,16 @@ export default async function ProductDetailPage({
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)] lg:items-start">
           <div className="relative overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
             <div className=" group relative aspect-[4/3] min-h-[360px] bg-stone-100">
-              {/*<Image*/}
-              {/*  src={product.image}*/}
-              {/*  alt={product.name}*/}
-              {/*  fill*/}
-              {/*  priority*/}
-              {/*  sizes="(max-width: 1024px) 100vw, 680px"*/}
-              {/*  className="object-cover object-top"*/}
-              {/*/>*/}
               <img
-                  src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"
-                  alt={product.name}
-                  className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
+                src={product.image}
+                alt={product.name}
+                className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"
               />
+              {/*<img*/}
+              {/*    src="https://vcard.webie.com.vn/assets/img/templates/vcard24.png"*/}
+              {/*    alt={product.name}*/}
+              {/*    className="w-full object-top transition-transform duration-[6000ms] ease-linear group-hover:-translate-y-[65%]"*/}
+              {/*/>*/}
 
             </div>
             {/*<div className="absolute inset-x-5 bottom-5 flex items-center justify-between gap-3 rounded-md bg-white/90 px-4 py-3 shadow-lg shadow-stone-300/40 backdrop-blur">*/}

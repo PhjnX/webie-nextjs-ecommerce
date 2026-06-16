@@ -32,6 +32,9 @@ const productCategories = [
   },
 ];
 
+const PROFILE_SETTINGS_PATH = "/profile?section=settings";
+const PROFILE_CARD_PATH = "/profile?section=card";
+
 function getSessionAvatarUrl(session: AuthSession | null) {
   const user = session?.user;
 
@@ -165,11 +168,11 @@ export default function Header() {
     setMobileOpen(false);
 
     if (!authSession) {
-      openAuthDialog("/payment");
+      openAuthDialog(PROFILE_CARD_PATH);
       return;
     }
 
-    router.push("/payment");
+    router.push(PROFILE_CARD_PATH);
   };
 
   const handleAuthenticated = (session: AuthSession) => {
@@ -251,16 +254,16 @@ export default function Header() {
             <div className="group relative">
               {authSession ? (
                 <Link
-                  href="/profile"
+                  href={PROFILE_SETTINGS_PATH}
                   className="flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-all duration-200 hover:bg-stone-50/50 hover:text-[#D8C97B]"
-                  aria-label="Profile"
+                  aria-label="Profile settings"
                 >
                   <AccountAvatar avatarUrl={avatarUrl} />
                 </Link>
               ) : (
                 <button
                   type="button"
-                  onClick={() => openAuthDialog("/profile")}
+                  onClick={() => openAuthDialog(PROFILE_SETTINGS_PATH)}
                   className="flex h-10 w-10 items-center justify-center rounded-full text-stone-600 transition-all duration-200 hover:bg-stone-50/50 hover:text-[#D8C97B]"
                   aria-label="Account"
                 >
@@ -344,7 +347,7 @@ export default function Header() {
             <div className="flex gap-3 border-t border-stone-100 pt-4">
               {authSession ? (
                 <Link
-                  href="/profile"
+                  href={PROFILE_SETTINGS_PATH}
                   onClick={() => setMobileOpen(false)}
                   className="flex flex-1 items-center justify-center gap-2 rounded border border-stone-200 py-3 text-center text-xs font-semibold uppercase tracking-widest text-stone-600 transition-colors hover:text-[#D8C97B]"
                 >
@@ -354,7 +357,7 @@ export default function Header() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => openAuthDialog("/profile")}
+                  onClick={() => openAuthDialog(PROFILE_SETTINGS_PATH)}
                   className="flex flex-1 items-center justify-center gap-2 rounded border border-stone-200 py-3 text-center text-xs font-semibold uppercase tracking-widest text-stone-600 transition-colors hover:text-[#D8C97B]"
                 >
                   <User size={16} />

@@ -45,6 +45,7 @@ export class OrderApiError extends Error {
 }
 
 const FALLBACK_PRODUCT_IMAGE = "/images/services/website-templates.png";
+const DEFAULT_CHECKOUT_NOTE = "Checkout from profile card.";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -251,15 +252,81 @@ function normalizeOrder(value: unknown): CustomerOrder | null {
   };
 }
 
+function extractOrder(value: unknown): CustomerOrder | null {
+  if (Array.isArray(value)) {
+    return (
+      value
+        .map(normalizeOrder)
+        .find((order): order is CustomerOrder => Boolean(order)) ?? null
+    );
+  }
+
+  const directOrder = normalizeOrder(value);
+
+  if (directOrder) {
+    return directOrder;
+  }
+
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  for (const key of ["data", "order", "checkout", "result", "payload"]) {
+    const nestedOrder = extractOrder(value[key]);
+
+    if (nestedOrder) {
+      return nestedOrder;
+    }
+  }
+
+  return null;
+}
+
+function getMostRecentOrder(orders: CustomerOrder[]) {
+  return (
+    [...orders].sort((firstOrder, secondOrder) => {
+      const firstDate = new Date(firstOrder.createdAt).getTime();
+      const secondDate = new Date(secondOrder.createdAt).getTime();
+
+      if (Number.isFinite(firstDate) && Number.isFinite(secondDate)) {
+        return secondDate - firstDate;
+      }
+
+      return secondOrder.id - firstOrder.id;
+    })[0] ?? null
+  );
+}
+
 async function readApiResponse<TData>(
   response: Response,
 ): Promise<ApiResponse<TData>> {
-  const payload = (await response.json().catch(() => ({
-    success: false,
-    message: "Unexpected order response.",
-  }))) as ApiResponse<TData>;
+  const contentType = response.headers.get("content-type");
+  const responseText = await response.text();
 
-  return payload;
+  if (contentType?.includes("application/json") && responseText.trim()) {
+    try {
+      return JSON.parse(responseText) as ApiResponse<TData>;
+    } catch {
+      // Fall through to the diagnostic response below.
+    }
+  }
+
+  if (response.ok) {
+    return {
+      success: true,
+      message: "Request completed successfully.",
+    };
+  }
+
+  const normalizedText = responseText.replace(/\s+/g, " ").trim();
+  const responsePreview = normalizedText
+    ? ` ${normalizedText.slice(0, 220)}`
+    : "";
+
+  return {
+    success: false,
+    message: `Order API returned ${response.status} ${response.statusText}.${responsePreview}`,
+  };
 }
 
 function extractPaymentUrl(value: unknown): string {
@@ -368,6 +435,50 @@ export async function getCustomerOrder(orderId: number | string) {
   const orders = await getCustomerOrders();
 
   return orders.find((order) => order.id === numericOrderId) ?? null;
+}
+
+export async function checkoutOrder(note = DEFAULT_CHECKOUT_NOTE) {
+  const checkoutNote = note.trim() || DEFAULT_CHECKOUT_NOTE;
+  const response = await sendOrderRequest<unknown>("/api/order/checkout", {
+    method: "POST",
+    body: JSON.stringify({ note: checkoutNote }),
+  });
+  const order = extractOrder(response.data);
+
+  if (order) {
+    return {
+      message: response.message,
+      order,
+      raw: response.data,
+    };
+  }
+
+  const refreshedOrders = await getCustomerOrders().catch(() => []);
+
+  return {
+    message: response.message,
+    order: getMostRecentOrder(refreshedOrders),
+    raw: response.data,
+  };
+}
+
+export async function cancelCustomerOrder(orderId: number) {
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    throw new OrderApiError("Order ID is required.", 400);
+  }
+
+  const response = await sendOrderRequest<unknown>(
+    `/api/order/${encodeURIComponent(orderId)}/cancel`,
+    {
+      method: "PATCH",
+    },
+  );
+
+  return {
+    message: response.message,
+    order: extractOrder(response.data),
+    raw: response.data,
+  };
 }
 
 export async function createVnpayPayment(orderId: number) {

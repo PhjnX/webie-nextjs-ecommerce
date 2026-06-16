@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
@@ -44,6 +45,7 @@ import {
 } from "@/services/auth";
 import {
   type CartItem,
+  CART_UPDATED_EVENT,
   CartApiError,
   clearCart,
   deleteCartItem,
@@ -51,6 +53,8 @@ import {
   updateCartItemQuantity,
 } from "@/services/cart";
 import {
+  cancelCustomerOrder,
+  checkoutOrder,
   type CustomerOrder,
   formatOrderCurrency,
   formatOrderDate,
@@ -111,22 +115,30 @@ function parseCartPrice(value: string) {
   return Number.isFinite(price) ? price : 0;
 }
 
+function normalizeOrderStatus(status: string) {
+  return status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function isPendingOrderStatus(status: string) {
+  return normalizeOrderStatus(status) === "pending";
+}
+
 function getOrderStatusClass(status: string) {
-  const normalizedStatus = status.toLowerCase();
+  const normalizedStatus = normalizeOrderStatus(status);
 
   if (["active", "completed", "paid", "success", "delivered"].includes(normalizedStatus)) {
-    return "border-green-300 bg-emerald-50 text-black";
+    return "border-green-300 bg-emerald-100 text-black";
   }
 
   if (["locked", "blocked", "cancelled", "canceled", "failed", "unpaid"].includes(normalizedStatus)) {
-    return "border-red-200 bg-red-50 text-black";
+    return "border-red-200 bg-red-100 text-black";
   }
 
   if (["processing"].includes(normalizedStatus)) {
-    return "border-blue-300 bg-blue-50 text-black";
+    return "border-blue-300 bg-blue-100 text-black";
   }
   if (["pending"].includes(normalizedStatus)) {
-    return "border-yellow-200 bg-yellow-50 text-black";
+    return "border-yellow-200 bg-yellow-100 text-black";
   }
 
   if (["refunded", "draft", "inactive", "unknown"].includes(normalizedStatus)) {
@@ -158,16 +170,22 @@ function formatOrderId(id: number) {
   return `#ORD-${String(id).padStart(4, "0")}`;
 }
 
-function readInitialProfileSection(): ProfileSection {
-  if (typeof window === "undefined") {
+function normalizeProfileSection(value: string | null): ProfileSection {
+  if (value === "card" || value === "orders" || value === "personal") {
+    return value;
+  }
+
+  if (value === "setting" || value === "settings") {
     return "personal";
   }
 
-  const section = new URLSearchParams(window.location.search).get("section");
+  return "personal";
+}
 
-  return section === "card" || section === "orders" || section === "personal"
-    ? section
-    : "personal";
+function getProfileSectionPath(section: ProfileSection) {
+  const sectionParam = section === "personal" ? "settings" : section;
+
+  return `/profile?section=${sectionParam}`;
 }
 
 function readStoredSession() {
@@ -191,6 +209,10 @@ function readStoredSession() {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const activeSection = normalizeProfileSection(sectionParam);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authSession, setAuthSession] =
     useState<AuthSession | null>(readStoredSession);
@@ -214,12 +236,14 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [activeSection, setActiveSection] =
-    useState<ProfileSection>(readInitialProfileSection);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
   const [cartError, setCartError] = useState("");
   const [clearingCart, setClearingCart] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(
+    null,
+  );
   const [deletingCartItemId, setDeletingCartItemId] = useState<number | null>(
     null,
   );
@@ -315,7 +339,6 @@ export default function ProfilePage() {
   const handleLogout = () => {
     setAuthSession(null);
     setProfile(null);
-    setActiveSection("personal");
     setCartItems([]);
     setCartError("");
     setOrders([]);
@@ -423,9 +446,9 @@ export default function ProfilePage() {
   }, [activeSection, loadOrders, profile]);
 
   const handleSectionChange = (section: ProfileSection) => {
-    setActiveSection(section);
     setErrorMessage("");
     setStatusMessage("");
+    router.push(getProfileSectionPath(section));
   };
 
   const handleClearCart = async () => {
@@ -522,6 +545,73 @@ export default function ProfilePage() {
       }
     } finally {
       setUpdatingCartItemId(null);
+    }
+  };
+
+  const handleCheckoutOrder = async () => {
+    if (checkingOut || cartItems.length === 0) {
+      return;
+    }
+
+    setCheckingOut(true);
+    setCartError("");
+    setStatusMessage("");
+
+    try {
+      const result = await checkoutOrder();
+
+      if (!result.order) {
+        setCartError(
+          result.message ||
+            "Order was created, but the order detail page could not be opened.",
+        );
+        return;
+      }
+
+      setCartItems([]);
+      window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+      router.push(`/profile/orders/${result.order.id}`);
+    } catch (error) {
+      if (error instanceof OrderApiError && error.status === 401) {
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const handleCancelOrder = async (order: CustomerOrder) => {
+    if (cancellingOrderId === order.id || !isPendingOrderStatus(order.status)) {
+      return;
+    }
+
+    setCancellingOrderId(order.id);
+    setOrdersError("");
+    setStatusMessage("");
+
+    try {
+      const result = await cancelCustomerOrder(order.id);
+      const cancelledOrder = result.order ?? {
+        ...order,
+        status: "cancelled",
+      };
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? cancelledOrder : currentOrder,
+        ),
+      );
+      setStatusMessage(result.message || "Order cancelled successfully.");
+    } catch (error) {
+      if (error instanceof OrderApiError && error.status === 401) {
+        setAuthDialogOpen(true);
+      } else {
+        setOrdersError(getErrorMessage(error));
+      }
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -1139,7 +1229,7 @@ export default function ProfilePage() {
                                   </button>
                                 </div>
                                 <p className="mt-2 text-lg font-semibold text-[#746f35]">
-                                  {priceFormatter.format(itemTotal)}
+                                  {priceFormatter.format(parseCartPrice(item.productPrice))}
                                 </p>
                               </div>
                               <button
@@ -1178,18 +1268,25 @@ export default function ProfilePage() {
                       </span>
                     </div>
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                      <Link
-                        href="/payment"
-                        className={`flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold uppercase text-white transition sm:flex-1 ${
-                          cartItems.length > 0
-                            ? "bg-[#242b36] hover:bg-[#111827]"
-                            : "pointer-events-none bg-[#242b36]/45"
-                        }`}
-                        aria-disabled={cartItems.length === 0}
+                      <button
+                        type="button"
+                        onClick={handleCheckoutOrder}
+                        disabled={
+                          checkingOut ||
+                          clearingCart ||
+                          cartItems.length === 0
+                        }
+                        className="flex h-12 items-center justify-center gap-2 rounded-lg bg-[#242b36] px-6 text-sm font-semibold uppercase text-white transition hover:bg-[#111827] disabled:cursor-not-allowed disabled:bg-[#242b36]/45 disabled:opacity-70 sm:flex-1"
                       >
-                        Checkout
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                        {checkingOut ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            Checkout
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={handleClearCart}
@@ -1308,13 +1405,36 @@ export default function ProfilePage() {
                                   {formatOrderCurrency(order.totalAmount)}
                                 </td>
                                 <td className="px-7 py-7 text-right">
-                                  <Link
-                                    href={`/profile/orders/${order.id}`}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[#d1c8b9] bg-white px-4 text-sm font-semibold text-[#4f4b43] transition hover:border-[#746f35] hover:text-[#746f35]"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                    View
-                                  </Link>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Link
+                                      href={`/profile/orders/${order.id}`}
+                                      className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#d1c8b9] bg-white text-sm font-semibold text-[#4f4b43] transition hover:border-[#746f35] hover:text-[#746f35]"
+                                      aria-label={`View ${formatOrderId(order.id)}`}
+                                      title="View order"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Link>
+                                    {isPendingOrderStatus(order.status) ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void handleCancelOrder(order)
+                                        }
+                                        disabled={
+                                          cancellingOrderId === order.id
+                                        }
+                                        className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        aria-label={`Cancel ${formatOrderId(order.id)}`}
+                                        title="Cancel order"
+                                      >
+                                        {cancellingOrderId === order.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4" />
+                                        )}
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </td>
                               </tr>
                             ))}

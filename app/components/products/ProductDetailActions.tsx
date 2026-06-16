@@ -44,7 +44,7 @@ function useProductCartAction({
       window.setTimeout(() => setMessage(""), 2500);
 
       if (goToPayment) {
-        router.push("/payment");
+        router.push("/profile?section=card");
       }
     } catch (error) {
       if (error instanceof CartApiError && error.status === 401) {

@@ -149,7 +149,7 @@ export async function proxyJsonToUserApi({
 }: {
   request: NextRequest;
   path: string;
-  method: "GET" | "PATCH";
+  method: "GET" | "POST" | "PATCH";
   body?: unknown;
   fallbackMessage: string;
   failedFallbackMessage: string;

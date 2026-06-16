@@ -25,7 +25,7 @@ const baseStatusOptions = [
   "processing",
   "completed",
   "cancelled",
-  "refunded",
+  "paid",
 ];
 
 function getErrorMessage(error: unknown) {

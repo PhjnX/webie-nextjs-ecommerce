@@ -32,6 +32,7 @@ export class CartApiError extends Error {
 export const CART_UPDATED_EVENT = "webie_cart_updated";
 
 const FALLBACK_PRODUCT_IMAGE = "/images/services/website-templates.png";
+const ADD_CART_PATCH_FALLBACK_STATUSES = new Set([400, 404, 409]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -204,6 +205,23 @@ async function sendCartRequest<TData>(
   };
 }
 
+function notifyCartUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+  }
+}
+
+async function findCartItemIdByProductId(productId: number) {
+  try {
+    const items = await getCartItems();
+    const existingItem = items.find((item) => item.productId === productId);
+
+    return existingItem?.id ?? productId;
+  } catch {
+    return productId;
+  }
+}
+
 export async function getCartItems() {
   const response = await sendCartRequest("/api/cart", {
     method: "GET",
@@ -217,14 +235,30 @@ export async function addCartItem(productId: number) {
     throw new CartApiError("Product ID is required.", 400);
   }
 
-  const response = await sendCartRequest("/api/cart/add", {
-    method: "POST",
-    body: JSON.stringify({ productId }),
-  });
+  let response: Awaited<ReturnType<typeof sendCartRequest>>;
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+  try {
+    response = await sendCartRequest("/api/cart/add", {
+      method: "POST",
+      body: JSON.stringify({ productId, quantity: 1 }),
+    });
+  } catch (error) {
+    if (
+      error instanceof CartApiError &&
+      ADD_CART_PATCH_FALLBACK_STATUSES.has(error.status)
+    ) {
+      const cartItemId = await findCartItemIdByProductId(productId);
+
+      response = await sendCartRequest(`/api/cart/item/${cartItemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({}),
+      });
+    } else {
+      throw error;
+    }
   }
+
+  notifyCartUpdated();
 
   return {
     message: response.message,
@@ -237,9 +271,7 @@ export async function clearCart() {
     method: "DELETE",
   });
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
-  }
+  notifyCartUpdated();
 
   return response.message;
 }
@@ -256,9 +288,36 @@ export async function deleteCartItem(id: number) {
     },
   );
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+  notifyCartUpdated();
+
+  return {
+    message: response.message,
+    items: extractCartItems(response.data),
+  };
+}
+
+export async function updateCartItemQuantity(id: number, quantity: number) {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new CartApiError("Cart item ID is required.", 400);
   }
+
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    throw new CartApiError(
+      "Quantity must be zero or a positive whole number.",
+      400,
+    );
+  }
+
+  if (quantity === 0) {
+    return deleteCartItem(id);
+  }
+
+  const response = await sendCartRequest(`/api/cart/item/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+
+  notifyCartUpdated();
 
   return {
     message: response.message,

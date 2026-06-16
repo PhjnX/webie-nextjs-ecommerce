@@ -6,15 +6,19 @@ import {
   ArrowRight,
   CheckCircle2,
   ClipboardList,
+  Eye,
   Home,
   KeyRound,
   Loader2,
   Lock,
   LogOut,
   Mail,
+  Minus,
   Pencil,
   Phone,
-  Save, Settings,
+  Plus,
+  Save,
+  Settings,
   ShieldCheck,
   ShoppingBag,
   Trash2,
@@ -44,7 +48,16 @@ import {
   clearCart,
   deleteCartItem,
   getCartItems,
+  updateCartItemQuantity,
 } from "@/services/cart";
+import {
+  type CustomerOrder,
+  formatOrderCurrency,
+  formatOrderDate,
+  getCustomerOrders,
+  getOrderStatusLabel,
+  OrderApiError,
+} from "@/services/order";
 import {
   changeUserPassword,
   getUserProfile,
@@ -98,6 +111,65 @@ function parseCartPrice(value: string) {
   return Number.isFinite(price) ? price : 0;
 }
 
+function getOrderStatusClass(status: string) {
+  const normalizedStatus = status.toLowerCase();
+
+  if (["active", "completed", "paid", "success", "delivered"].includes(normalizedStatus)) {
+    return "border-green-300 bg-emerald-50 text-black";
+  }
+
+  if (["locked", "blocked", "cancelled", "canceled", "failed", "unpaid"].includes(normalizedStatus)) {
+    return "border-red-200 bg-red-50 text-black";
+  }
+
+  if (["processing"].includes(normalizedStatus)) {
+    return "border-blue-300 bg-blue-50 text-black";
+  }
+  if (["pending"].includes(normalizedStatus)) {
+    return "border-yellow-200 bg-yellow-50 text-black";
+  }
+
+  if (["refunded", "draft", "inactive", "unknown"].includes(normalizedStatus)) {
+    return "border-stone-200 bg-stone-100 text-stone-600";
+  }
+
+  return "border-sky-200 bg-sky-50 text-sky-700";
+}
+
+// function getOrderStatusDotClass(status: string) {
+//   const normalizedStatus = status.toLowerCase();
+//
+//   if (["completed", "paid", "done", "success"].includes(normalizedStatus)) {
+//     return "bg-emerald-500";
+//   }
+//
+//   if (["cancelled", "canceled", "failed", "rejected"].includes(normalizedStatus)) {
+//     return "bg-red-500";
+//   }
+//
+//   if (["processing", "confirmed"].includes(normalizedStatus)) {
+//     return "bg-amber-500";
+//   }
+//
+//   return "bg-sky-500";
+// }
+
+function formatOrderId(id: number) {
+  return `#ORD-${String(id).padStart(4, "0")}`;
+}
+
+function readInitialProfileSection(): ProfileSection {
+  if (typeof window === "undefined") {
+    return "personal";
+  }
+
+  const section = new URLSearchParams(window.location.search).get("section");
+
+  return section === "card" || section === "orders" || section === "personal"
+    ? section
+    : "personal";
+}
+
 function readStoredSession() {
   if (typeof window === "undefined") {
     return null;
@@ -143,7 +215,7 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [activeSection, setActiveSection] =
-    useState<ProfileSection>("personal");
+    useState<ProfileSection>(readInitialProfileSection);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
   const [cartError, setCartError] = useState("");
@@ -151,6 +223,12 @@ export default function ProfilePage() {
   const [deletingCartItemId, setDeletingCartItemId] = useState<number | null>(
     null,
   );
+  const [updatingCartItemId, setUpdatingCartItemId] = useState<number | null>(
+    null,
+  );
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
 
   const displayName = profile?.fullName || "Your profile";
   const displayEmail = profile?.email || authSession?.email || "";
@@ -172,6 +250,15 @@ export default function ProfilePage() {
       total: subtotal,
     };
   }, [cartItems]);
+  const latestOrders = useMemo(
+    () =>
+      [...orders].sort(
+        (firstOrder, secondOrder) =>
+          new Date(secondOrder.createdAt).getTime() -
+          new Date(firstOrder.createdAt).getTime(),
+      ),
+    [orders],
+  );
 
   const applyProfile = useCallback((nextProfile: UserProfile) => {
     setProfile(nextProfile);
@@ -231,6 +318,8 @@ export default function ProfilePage() {
     setActiveSection("personal");
     setCartItems([]);
     setCartError("");
+    setOrders([]);
+    setOrdersError("");
     window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
     window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
     setAuthDialogOpen(true);
@@ -280,6 +369,31 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
+  const loadOrders = useCallback(async () => {
+    if (!profile) {
+      return;
+    }
+
+    setOrdersLoading(true);
+    setOrdersError("");
+
+    try {
+      const nextOrders = await getCustomerOrders();
+
+      setOrders(nextOrders);
+    } catch (error) {
+      setOrders([]);
+
+      if (error instanceof OrderApiError && error.status === 401) {
+        setAuthDialogOpen(true);
+      } else {
+        setOrdersError(getErrorMessage(error));
+      }
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [profile]);
+
   useEffect(() => {
     if (activeSection !== "card" || !profile) {
       return;
@@ -293,6 +407,20 @@ export default function ProfilePage() {
       window.clearTimeout(cartLoadId);
     };
   }, [activeSection, loadCart, profile]);
+
+  useEffect(() => {
+    if (activeSection !== "orders" || !profile) {
+      return;
+    }
+
+    const ordersLoadId = window.setTimeout(() => {
+      void loadOrders();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(ordersLoadId);
+    };
+  }, [activeSection, loadOrders, profile]);
 
   const handleSectionChange = (section: ProfileSection) => {
     setActiveSection(section);
@@ -326,7 +454,7 @@ export default function ProfilePage() {
   };
 
   const handleDeleteCartItem = async (id: number) => {
-    if (deletingCartItemId === id) {
+    if (deletingCartItemId === id || updatingCartItemId === id) {
       return;
     }
 
@@ -351,6 +479,49 @@ export default function ProfilePage() {
       }
     } finally {
       setDeletingCartItemId(null);
+    }
+  };
+
+  const handleUpdateCartItemQuantity = async (
+    item: CartItem,
+    nextQuantity: number,
+  ) => {
+    if (updatingCartItemId === item.id || deletingCartItemId === item.id) {
+      return;
+    }
+
+    if (nextQuantity <= 0) {
+      await handleDeleteCartItem(item.id);
+      return;
+    }
+
+    setUpdatingCartItemId(item.id);
+    setCartError("");
+    setStatusMessage("");
+
+    try {
+      const result = await updateCartItemQuantity(item.id, nextQuantity);
+
+      setCartItems((currentItems) =>
+        result.items.length > 0
+          ? result.items
+          : currentItems.map((currentItem) =>
+              currentItem.id === item.id
+                ? { ...currentItem, quantity: nextQuantity }
+                : currentItem,
+            ),
+      );
+      setStatusMessage(
+        result.message || "Cart item quantity updated successfully.",
+      );
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setUpdatingCartItemId(null);
     }
   };
 
@@ -903,6 +1074,9 @@ export default function ProfilePage() {
                         {cartItems.map((item) => {
                           const itemTotal =
                             parseCartPrice(item.productPrice) * item.quantity;
+                          const itemBusy =
+                            deletingCartItemId === item.id ||
+                            updatingCartItemId === item.id;
 
                           return (
                             <article
@@ -927,9 +1101,43 @@ export default function ProfilePage() {
                                     SKU: {item.productSku}
                                   </p>
                                 ) : null}
-                                <p className="mt-3 text-sm font-medium text-[#4f4b43]">
-                                  Quantity: {item.quantity}
-                                </p>
+                                <div className="mt-4 inline-flex h-10 items-center overflow-hidden rounded-full border border-[#d1c8b9] bg-[#f8f6ef] text-sm font-semibold text-[#111827]">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateCartItemQuantity(
+                                        item,
+                                        item.quantity - 1,
+                                      )
+                                    }
+                                    disabled={itemBusy}
+                                    className="flex h-full w-10 items-center justify-center text-[#797466] transition hover:bg-white hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+                                    aria-label={`Decrease ${item.productName} quantity`}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="flex min-w-10 items-center justify-center border-x border-[#d1c8b9] px-3">
+                                    {updatingCartItemId === item.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      item.quantity
+                                    )}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateCartItemQuantity(
+                                        item,
+                                        item.quantity + 1,
+                                      )
+                                    }
+                                    disabled={itemBusy}
+                                    className="flex h-full w-10 items-center justify-center text-[#797466] transition hover:bg-white hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+                                    aria-label={`Increase ${item.productName} quantity`}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
                                 <p className="mt-2 text-lg font-semibold text-[#746f35]">
                                   {priceFormatter.format(itemTotal)}
                                 </p>
@@ -937,7 +1145,7 @@ export default function ProfilePage() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteCartItem(item.id)}
-                                disabled={deletingCartItemId === item.id}
+                                disabled={itemBusy}
                                 className="flex h-10 w-10 items-center justify-center rounded-full text-[#797466] transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 sm:self-start"
                                 aria-label={`Remove ${item.productName} from card`}
                               >
@@ -1001,43 +1209,120 @@ export default function ProfilePage() {
               ) : null}
 
               {activeSection === "orders" ? (
-                <section className={`${panelClass} mt-10`}>
-                  <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h2 className="text-3xl font-semibold leading-tight text-[#111827]">
-                        Orders
-                      </h2>
-                      <p className="mt-2 text-lg leading-7 text-[#4f4b43]">
-                        Track completed purchases and recent checkout activity.
-                      </p>
-                    </div>
-                    <ClipboardList className="mt-3 hidden h-9 w-9 text-[#c9c3b5] md:block" />
+                <section className="mt-10">
+                  <div>
+                    <h2 className="text-4xl font-bold leading-tight text-[#111827]">
+                      Order History
+                    </h2>
+                    <p className="mt-3 text-lg leading-7 text-[#5f5b62]">
+                      Review your recent transactions and manage your orders.
+                    </p>
                   </div>
 
-                  <div className="mt-8 rounded-lg border border-[#d1c8b9] bg-[#f8f6ef] px-6 py-12 text-center">
-                    <ClipboardList className="mx-auto h-10 w-10 text-[#797466]" />
-                    <h3 className="mt-4 text-xl font-semibold text-[#111827]">
-                      No orders yet
-                    </h3>
-                    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#4f4b43]">
-                      Completed purchases will appear here.
+                  <article className="mt-12 w-full max-w-[330px] rounded-lg border border-[#eee7d9] bg-white p-7 shadow-[0_12px_34px_rgba(37,32,12,0.06)]">
+                    <p className="text-base font-semibold text-[#666267]">
+                      Total Orders
                     </p>
-                    <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                    <div className="mt-2 min-h-14 text-5xl font-bold leading-none text-[#746f35]">
+                      {ordersLoading ? (
+                        <Loader2 className="h-10 w-10 animate-spin" />
+                      ) : (
+                        latestOrders.length.toLocaleString("en")
+                      )}
+                    </div>
+                  </article>
+
+                  <section className="mt-12 overflow-hidden rounded-lg border border-[#eee7d9] bg-white shadow-[0_16px_46px_rgba(37,32,12,0.06)]">
+                    <div className="flex flex-col gap-4 border-b border-[#d8d2c7] p-7 md:flex-row md:items-center md:justify-between">
+                      <h3 className="text-2xl font-bold text-[#111827]">
+                        Recent Orders
+                      </h3>
                       <button
                         type="button"
-                        onClick={() => handleSectionChange("card")}
-                        className="inline-flex h-12 items-center justify-center rounded-lg bg-[#746f35] px-6 text-sm font-semibold uppercase text-white transition hover:bg-[#625d2b]"
+                        onClick={() => void loadOrders()}
+                        disabled={ordersLoading}
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-[#d1c8b9] px-4 text-sm font-semibold text-[#4f4b43] transition hover:bg-[#f8f6ef] disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        View Card
+                        {ordersLoading ? "Refreshing..." : "Refresh"}
                       </button>
-                      <Link
-                        href="/products"
-                        className="inline-flex h-12 items-center justify-center rounded-lg border border-[#d1c8b9] bg-white px-6 text-sm font-semibold uppercase text-[#4f4b43] transition hover:border-[#746f35] hover:text-[#746f35]"
-                      >
-                        Browse Products
-                      </Link>
                     </div>
-                  </div>
+
+                    {ordersLoading ? (
+                      <div className="flex items-center gap-3 px-7 py-10 text-sm font-medium text-[#4f4b43]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading orders...
+                      </div>
+                    ) : ordersError ? (
+                      <div className="m-7 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+                        {ordersError}
+                      </div>
+                    ) : latestOrders.length === 0 ? (
+                      <div className="px-7 py-14 text-center">
+                        <ClipboardList className="mx-auto h-10 w-10 text-[#797466]" />
+                        <h3 className="mt-4 text-xl font-semibold text-[#111827]">
+                          No orders yet
+                        </h3>
+                        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#4f4b43]">
+                          Completed purchases will appear here.
+                        </p>
+                        <Link
+                          href="/products"
+                          className="mt-6 inline-flex h-12 items-center justify-center rounded-lg bg-[#746f35] px-6 text-sm font-semibold uppercase text-white transition hover:bg-[#625d2b]"
+                        >
+                          Browse Products
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[820px] border-collapse text-left">
+                          <thead className="bg-[#eef3ff] text-sm font-bold text-[#666267]">
+                            <tr>
+                              <th className="px-7 py-4">Order ID</th>
+                              <th className="px-7 py-4">Date</th>
+                              <th className="px-7 py-4">Status</th>
+                              <th className="px-7 py-4 text-right">Total</th>
+                              <th className="px-7 py-4 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#d8d2c7]">
+                            {latestOrders.map((order) => (
+                              <tr key={order.id} className="text-[#171d2a]">
+                                <td className="px-7 py-7 text-lg font-bold">
+                                  {formatOrderId(order.id)}
+                                </td>
+                                <td className="px-7 py-7 text-base">
+                                  {formatOrderDate(order.createdAt)}
+                                </td>
+                                <td className="px-7 py-7">
+                                  <span
+                                    className={`inline-flex items-center gap-2 rounded px-2.5 py-1 text-sm font-semibold ${getOrderStatusClass(order.status)}`}
+                                  >
+                                    {/*<span*/}
+                                    {/*  className={`h-2 w-2 rounded-full ${getOrderStatusDotClass(order.status)}`}*/}
+                                    {/*  aria-hidden="true"*/}
+                                    {/*/>*/}
+                                    {getOrderStatusLabel(order.status)}
+                                  </span>
+                                </td>
+                                <td className="px-7 py-7 text-right text-lg font-bold">
+                                  {formatOrderCurrency(order.totalAmount)}
+                                </td>
+                                <td className="px-7 py-7 text-right">
+                                  <Link
+                                    href={`/profile/orders/${order.id}`}
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[#d1c8b9] bg-white px-4 text-sm font-semibold text-[#4f4b43] transition hover:border-[#746f35] hover:text-[#746f35]"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    View
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
                 </section>
               ) : null}
             </main>

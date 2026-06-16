@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const CART_API_BASE_URL =
-  process.env.CART_API_BASE_URL ??
+const PAYMENT_API_BASE_URL =
+  process.env.PAYMENT_API_BASE_URL ??
   process.env.AUTH_API_BASE_URL ??
   "https://coral-mouse-470858.hostingersite.com";
 const AUTH_COOKIE_NAME = "webie_auth_token";
@@ -70,15 +70,18 @@ function normalizePayload(
 }
 
 async function readUpstreamPayload(response: Response) {
+  const responseText = await response.text();
   const contentType = response.headers.get("content-type");
 
-  if (contentType?.includes("application/json")) {
-    return response.json();
+  if (contentType?.includes("application/json") && responseText.trim()) {
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      return responseText.trim();
+    }
   }
 
-  const text = await response.text();
-
-  return text.trim() || null;
+  return responseText.trim() || null;
 }
 
 function getAuthToken(request: NextRequest) {
@@ -103,74 +106,87 @@ export async function readJsonBody(request: Request) {
   }
 }
 
-export function validateProductId(body: unknown) {
-  if (!isRecord(body)) {
-    return "Request body must be a JSON object.";
-  }
-
-  const productId = Number(body.productId);
-
-  if (!Number.isInteger(productId) || productId <= 0) {
-    return "productId is required.";
-  }
-
-  return null;
-}
-
-export async function proxyJsonToCartApi({
+export async function fetchPaymentBackend({
   request,
   path,
   method,
   body,
+  requireAuth,
+  includeSearchParams = false,
   fallbackMessage,
   failedFallbackMessage,
 }: {
   request: NextRequest;
   path: string;
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST";
   body?: unknown;
+  requireAuth: boolean;
+  includeSearchParams?: boolean;
   fallbackMessage: string;
   failedFallbackMessage: string;
 }) {
-  try {
-    const token = getAuthToken(request);
+  const token = getAuthToken(request);
 
-    if (!token) {
-      return unauthorizedResponse();
-    }
-
-    const headers: HeadersInit = {
-      accept: "application/json",
-      Authorization: `Bearer ${token}`,
+  if (requireAuth && !token) {
+    return {
+      response: unauthorizedResponse(),
+      payload: {
+        success: false,
+        message: "Please sign in to continue.",
+        data: null,
+      },
     };
+  }
 
-    if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-    }
+  const headers: HeadersInit = {
+    accept: "application/json",
+  };
 
-    const upstreamResponse = await fetch(`${CART_API_BASE_URL}${path}`, {
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const queryString = includeSearchParams ? request.nextUrl.search : "";
+  const upstreamResponse = await fetch(
+    `${PAYMENT_API_BASE_URL}${path}${queryString}`,
+    {
       method,
       cache: "no-store",
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-    const upstreamPayload = await readUpstreamPayload(upstreamResponse);
-    const normalizedPayload = normalizePayload(
-      upstreamPayload,
-      upstreamResponse.ok,
-      fallbackMessage,
-      failedFallbackMessage,
-    );
-    const status = normalizedPayload.success
-      ? 200
-      : upstreamResponse.status >= 400
-        ? upstreamResponse.status
-        : 400;
+    },
+  );
+  const upstreamPayload = await readUpstreamPayload(upstreamResponse);
+  const payload = normalizePayload(
+    upstreamPayload,
+    upstreamResponse.ok,
+    fallbackMessage,
+    failedFallbackMessage,
+  );
+  const status = payload.success
+    ? 200
+    : upstreamResponse.status >= 400
+      ? upstreamResponse.status
+      : 400;
 
-    return NextResponse.json(normalizedPayload, { status });
+  return {
+    response: NextResponse.json(payload, { status }),
+    payload,
+  };
+}
+
+export async function proxyPaymentBackend(args: Parameters<typeof fetchPaymentBackend>[0]) {
+  try {
+    const { response } = await fetchPaymentBackend(args);
+
+    return response;
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unexpected cart error.";
+      error instanceof Error ? error.message : "Unexpected payment error.";
 
     return NextResponse.json(
       {

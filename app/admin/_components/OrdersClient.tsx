@@ -73,7 +73,7 @@ export default function OrdersClient() {
   }, [loadOrders]);
 
   const statusOptions = useMemo(() => {
-    const options = new Set(["pending", "processing", "completed", "cancelled"]);
+    const options = new Set(["pending", "processing", "completed", "cancelled", "paid"]);
 
     for (const order of orders) {
       if (order.orderStatus) {

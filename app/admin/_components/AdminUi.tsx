@@ -17,15 +17,18 @@ export function getStatusClassName(status: string) {
   const normalizedStatus = status.toLowerCase();
 
   if (["active", "completed", "paid", "success", "delivered"].includes(normalizedStatus)) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-green-300 bg-emerald-50 text-black";
   }
 
   if (["locked", "blocked", "cancelled", "canceled", "failed", "unpaid"].includes(normalizedStatus)) {
-    return "border-red-200 bg-red-50 text-red-700";
+    return "border-red-200 bg-red-50 text-black";
   }
 
-  if (["pending", "processing", "in_progress", "awaiting_payment"].includes(normalizedStatus)) {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+  if (["processing"].includes(normalizedStatus)) {
+    return "border-blue-300 bg-blue-50 text-black";
+  }
+  if (["pending"].includes(normalizedStatus)) {
+    return "border-yellow-200 bg-yellow-50 text-black";
   }
 
   if (["refunded", "draft", "inactive", "unknown"].includes(normalizedStatus)) {

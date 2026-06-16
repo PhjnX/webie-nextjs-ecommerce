@@ -17,6 +17,8 @@ import {
   Landmark,
   Loader2,
   Lock,
+  Minus,
+  Plus,
   ShieldCheck,
   ShoppingBag,
   Trash2,
@@ -32,6 +34,7 @@ import {
   clearCart,
   deleteCartItem,
   getCartItems,
+  updateCartItemQuantity,
 } from "@/services/cart";
 
 type PaymentMethod = "card" | "paypal" | "bank";
@@ -92,6 +95,7 @@ export default function PaymentCheckout() {
   const [deletingItemId, setDeletingItemId] = useState<number | null>(
     null,
   );
+  const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
 
   const loadCart = useCallback(async () => {
     if (!sessionReady) {
@@ -200,7 +204,7 @@ export default function PaymentCheckout() {
   };
 
   const handleDeleteCartItem = async (id: number) => {
-    if (deletingItemId === id) {
+    if (deletingItemId === id || updatingItemId === id) {
       return;
     }
 
@@ -226,6 +230,50 @@ export default function PaymentCheckout() {
       }
     } finally {
       setDeletingItemId(null);
+    }
+  };
+
+  const handleUpdateCartItemQuantity = async (
+    item: CartItem,
+    nextQuantity: number,
+  ) => {
+    if (updatingItemId === item.id || deletingItemId === item.id) {
+      return;
+    }
+
+    if (nextQuantity <= 0) {
+      await handleDeleteCartItem(item.id);
+      return;
+    }
+
+    setUpdatingItemId(item.id);
+    setCartError("");
+    setStatusMessage("");
+
+    try {
+      const result = await updateCartItemQuantity(item.id, nextQuantity);
+
+      setCartItems((currentItems) =>
+        result.items.length > 0
+          ? result.items
+          : currentItems.map((currentItem) =>
+              currentItem.id === item.id
+                ? { ...currentItem, quantity: nextQuantity }
+                : currentItem,
+            ),
+      );
+      setStatusMessage(
+        result.message || "Cart item quantity updated successfully.",
+      );
+    } catch (error) {
+      if (error instanceof CartApiError && error.status === 401) {
+        clearSession();
+        setAuthDialogOpen(true);
+      } else {
+        setCartError(getErrorMessage(error));
+      }
+    } finally {
+      setUpdatingItemId(null);
     }
   };
 
@@ -585,6 +633,8 @@ export default function PaymentCheckout() {
                 cartItems.map((item) => {
                   const itemTotal =
                     parseCartPrice(item.productPrice) * item.quantity;
+                  const itemBusy =
+                    deletingItemId === item.id || updatingItemId === item.id;
 
                   return (
                     <div
@@ -609,9 +659,43 @@ export default function PaymentCheckout() {
                             SKU: {item.productSku}
                           </p>
                         ) : null}
-                        <p className="mt-1 text-sm text-[#916061]">
-                          Qty: {item.quantity}
-                        </p>
+                        <div className="mt-3 inline-flex h-9 items-center overflow-hidden rounded-full border border-stone-200 bg-white text-sm font-semibold text-stone-800">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateCartItemQuantity(
+                                item,
+                                item.quantity - 1,
+                              )
+                            }
+                            disabled={itemBusy}
+                            className="flex h-full w-9 items-center justify-center text-stone-500 transition hover:bg-stone-100 hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Decrease ${item.productName} quantity`}
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="flex min-w-9 items-center justify-center border-x border-stone-200 px-2">
+                            {updatingItemId === item.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              item.quantity
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateCartItemQuantity(
+                                item,
+                                item.quantity + 1,
+                              )
+                            }
+                            disabled={itemBusy}
+                            className="flex h-full w-9 items-center justify-center text-stone-500 transition hover:bg-stone-100 hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label={`Increase ${item.productName} quantity`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                         <p className="mt-2 text-sm font-bold text-stone-950">
                           {priceFormatter.format(itemTotal)}
                         </p>
@@ -619,7 +703,7 @@ export default function PaymentCheckout() {
                       <button
                         type="button"
                         onClick={() => handleDeleteCartItem(item.id)}
-                        disabled={deletingItemId === item.id}
+                        disabled={itemBusy}
                         className="flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition hover:bg-white hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label={`Remove ${item.productName} from cart`}
                       >

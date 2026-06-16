@@ -27,6 +27,7 @@ export interface ProductsResult {
 export interface ProductCategory {
   id: number;
   name: string;
+  parent?: number | string | null;
 }
 
 interface ApiProduct {
@@ -56,6 +57,20 @@ interface ProductApiResponse {
   product?: ApiProduct | null;
 }
 
+interface ApiProductCategory {
+  id?: number | string | null;
+  name?: string | null;
+  parent?: number | string | null;
+}
+
+type CategoriesApiResponse =
+  | ApiProductCategory[]
+  | {
+      data?: ApiProductCategory[];
+      categories?: ApiProductCategory[];
+      results?: ApiProductCategory[];
+    };
+
 type ProductApiResponsePayload =
   | ProductsApiResponse
   | ProductApiResponse
@@ -66,6 +81,9 @@ const PRODUCTS_API_URL =
   process.env.PRODUCTS_API_URL ??
   "https://coral-mouse-470858.hostingersite.com/odoo/products";
 const PRODUCTS_API_BASE_URL = PRODUCTS_API_URL.replace(/\/+$/, "");
+const PRODUCT_CATEGORIES_API_URL =
+  process.env.PRODUCT_CATEGORIES_API_URL ??
+  `${PRODUCTS_API_BASE_URL.replace(/\/products$/, "")}/categories`;
 
 const FALLBACK_DESCRIPTION = "No description available yet.";
 const FALLBACK_IMAGE = "/images/services/website-templates.png";
@@ -77,6 +95,22 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isApiProduct(value: unknown): value is ApiProduct {
   return isObject(value) && typeof value.id === "number";
+}
+
+function readCategoryId(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsedValue = Number(value);
+
+    return Number.isInteger(parsedValue) && parsedValue > 0
+      ? parsedValue
+      : null;
+  }
+
+  return null;
 }
 
 function getProductsFromApiResponse(
@@ -104,6 +138,26 @@ function getProductsFromApiResponse(
 
   if (isApiProduct(result.product)) {
     return [result.product];
+  }
+
+  return [];
+}
+
+function getCategoriesFromApiResponse(result: CategoriesApiResponse) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (Array.isArray(result.data)) {
+    return result.data;
+  }
+
+  if (Array.isArray(result.categories)) {
+    return result.categories;
+  }
+
+  if (Array.isArray(result.results)) {
+    return result.results;
   }
 
   return [];
@@ -256,16 +310,41 @@ export async function getProductById(
 }
 
 export async function getProductCategories(): Promise<ProductCategory[]> {
-  const result = await getProducts({ offset: 0, limit: 20 });
-  const categories = new Map<number, string>();
+  try {
+    const res = await fetch(PRODUCT_CATEGORIES_API_URL, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
 
-  for (const product of result.products) {
-    if (product.category.id > 0 && !categories.has(product.category.id)) {
-      categories.set(product.category.id, product.category.name);
+    if (!res.ok) {
+      throw new Error(`Categories API request failed with ${res.status}`);
     }
-  }
 
-  return Array.from(categories, ([id, name]) => ({ id, name }));
+    const result = (await res.json()) as CategoriesApiResponse;
+    const categories = new Map<number, ProductCategory>();
+
+    for (const item of getCategoriesFromApiResponse(result)) {
+      const id = readCategoryId(item.id);
+      const name = item.name?.trim();
+
+      if (id && name && !categories.has(id)) {
+        categories.set(id, {
+          id,
+          name,
+          parent: item.parent ?? null,
+        });
+      }
+    }
+
+    return Array.from(categories.values());
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Error fetching product categories:", error);
+
+    return [];
+  }
 }
 
 export async function getVCardProducts(): Promise<Product[]> {

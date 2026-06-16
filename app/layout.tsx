@@ -2,8 +2,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
+import SiteShell from "./components/SiteShell";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -24,9 +23,7 @@ export default function RootLayout({
   return (
       <html lang="en" className={plusJakartaSans.variable + " scroll-smooth"}>
       <body className="bg-stone-50 text-stone-900 font-sans min-h-screen flex flex-col antialiased">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

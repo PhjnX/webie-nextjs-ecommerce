@@ -6,9 +6,12 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "webie-vietnam1.odoo.com",
-        port: "",
         pathname: "/web/image/**",
-        search: "",
+      },
+      {
+        protocol: "https",
+        hostname: "webievietnam.odoo.com",
+        pathname: "/web/image/**",
       },
     ],
   },

@@ -29,12 +29,6 @@ const priceFormatter = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
-const Categories = [
-  { id: 8, name: "Digital Vcard" },
-  { id: 6, name: "Website Template" },
-  { id: 10, name: "Greeting Card" },
-];
-
 type PendingCartProduct = {
   id: number;
   name: string;
@@ -46,6 +40,7 @@ function getErrorMessage(error: unknown) {
 
 export default function ProductStore({
   productsResult,
+  categories,
   selectedCategoryId,
   selectedKeyword,
 }: ProductStoreProps) {
@@ -71,25 +66,23 @@ export default function ProductStore({
   const [cartMessage, setCartMessage] = useState("");
   const [cartError, setCartError] = useState("");
 
-  // const categoryOptions = useMemo(() => {
-  //   const options = new Map<number, string>();
-  //
-  //   for (const category of categories) {
-  //     if (category.id > 0 && !options.has(category.id)) {
-  //       options.set(category.id, category.name);
-  //     }
-  //   }
-  //
-  //   for (const product of products) {
-  //     if (product.category.id > 0 && !options.has(product.category.id)) {
-  //       options.set(product.category.id, product.category.name);
-  //     }
-  //   }
-  //
-  //   return Array.from(options, ([id, name]) => ({ id, name }));
-  // }, [categories, products]);
+  const categoryOptions = useMemo(() => {
+    const options = new Map<number, string>();
 
-  const categoryOptions = Categories;
+    for (const category of categories) {
+      if (category.id > 0 && !options.has(category.id)) {
+        options.set(category.id, category.name);
+      }
+    }
+
+    for (const product of products) {
+      if (product.category.id > 0 && !options.has(product.category.id)) {
+        options.set(product.category.id, product.category.name);
+      }
+    }
+
+    return Array.from(options, ([id, name]) => ({ id, name }));
+  }, [categories, products]);
 
   const minCatalogPrice = useMemo(() => {
     return products.length

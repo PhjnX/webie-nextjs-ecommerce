@@ -12,6 +12,8 @@ const fieldLabelClass =
 
 const fieldControlClass =
   "h-14 w-full border border-[#3b372f] bg-[#E5E4E2] px-4 text-base text-black outline-none transition placeholder:text-stone-600 focus:border-[#d8c97b] focus:ring-1 focus:ring-[#d8c97b]";
+const contactSuccessMessage =
+  "Y\u00EAu c\u1EA7u t\u01B0 v\u1EA5n \u0111\u00E3 \u0111\u01B0\u1EE3c g\u1EEDi th\u00E0nh c\u00F4ng! Ch\u00FAng t\u00F4i s\u1EBD li\u00EAn h\u1EC7 b\u1EA1n trong v\u00F2ng 24 gi\u1EDD.";
 
 const socialLinks = [
   { label: "LinkedIn", short: "LI", href: "https://www.linkedin.com" },
@@ -52,9 +54,7 @@ function ContactSection({ variant = "home" }: ContactSectionProps) {
         throw new Error(payload?.message ?? "Unable to send your request.");
       }
 
-      setSuccessMessage(
-        payload?.message ?? "Thank you. We will contact you within 24 hours.",
-      );
+      setSuccessMessage(payload?.message ?? contactSuccessMessage);
       form.reset();
     } catch (error) {
       setErrorMessage(
@@ -115,7 +115,7 @@ function ContactSection({ variant = "home" }: ContactSectionProps) {
                 </label>
                 <input
                   id="contact-name"
-                  name="name"
+                  name="fullName"
                   type="text"
                   autoComplete="name"
                   required
@@ -161,6 +161,7 @@ function ContactSection({ variant = "home" }: ContactSectionProps) {
                 <textarea
                   id="contact-message"
                   name="message"
+                  required
                   placeholder="Tell us about your project or vision..."
                   className={`${fieldControlClass} min-h-[132px] resize-y py-4`}
                 />

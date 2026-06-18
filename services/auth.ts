@@ -57,6 +57,61 @@ export interface AuthResponse<TData = unknown> {
 export const AUTH_SESSION_STORAGE_KEY = "webie_auth_session";
 export const AUTH_SESSION_UPDATED_EVENT = "webie_auth_session_updated";
 
+const ADMIN_ROLE_MARKERS = ["admin", "administrator", "super_admin", "owner"];
+
+function readAuthUserValue(user: AuthUser | undefined, keys: string[]) {
+  if (!user) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = user[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function hasAdminRoleMarker(value: string) {
+  const normalizedValue = value.toLowerCase();
+
+  return ADMIN_ROLE_MARKERS.some((marker) => normalizedValue.includes(marker));
+}
+
+export function getAuthSessionAdminAccess(session: AuthSession | null) {
+  const user = session?.user;
+  const role = readAuthUserValue(user, ["role", "userRole", "user_role", "type"]);
+  const roles = readAuthUserValue(user, ["roles", "permissions"]);
+  const isAdmin = readAuthUserValue(user, ["isAdmin", "is_admin", "admin"]);
+
+  if (typeof isAdmin === "boolean") {
+    return isAdmin;
+  }
+
+  if (typeof role === "string") {
+    return hasAdminRoleMarker(role);
+  }
+
+  if (Array.isArray(roles)) {
+    return roles.some(
+      (value) => typeof value === "string" && hasAdminRoleMarker(value),
+    );
+  }
+
+  return null;
+}
+
 export function readStoredAuthSession(): AuthSession | null {
   if (typeof window === "undefined") {
     return null;

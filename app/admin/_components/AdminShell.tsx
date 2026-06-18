@@ -18,7 +18,11 @@ import {
 import AuthDialog from "@/app/components/auth/AuthDialog";
 import Footer from "@/app/components/Footer";
 import { useStoredAuthSession } from "@/app/components/auth/useStoredAuthSession";
-import { logoutAccount, type AuthSession } from "@/services/auth";
+import {
+  getAuthSessionAdminAccess,
+  logoutAccount,
+  type AuthSession,
+} from "@/services/auth";
 
 const navItems = [
   {
@@ -39,62 +43,8 @@ const navItems = [
   },
 ];
 
-function readSessionValue(session: AuthSession | null, keys: string[]) {
-  const user = session?.user;
-
-  if (!user) {
-    return undefined;
-  }
-
-  for (const key of keys) {
-    const value = user[key];
-
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-
-    if (typeof value === "boolean") {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      return value;
-    }
-  }
-
-  return undefined;
-}
-
-function hasAdminAccessMarker(session: AuthSession | null) {
-  const role = readSessionValue(session, ["role", "userRole", "user_role", "type"]);
-  const roles = readSessionValue(session, ["roles", "permissions"]);
-  const isAdmin = readSessionValue(session, ["isAdmin", "is_admin", "admin"]);
-
-  if (typeof isAdmin === "boolean") {
-    return isAdmin;
-  }
-
-  if (typeof role === "string") {
-    return ["admin", "administrator", "super_admin", "owner"].some((marker) =>
-      role.toLowerCase().includes(marker),
-    );
-  }
-
-  if (Array.isArray(roles)) {
-    return roles.some(
-      (value) =>
-        typeof value === "string" &&
-        ["admin", "administrator", "super_admin", "owner"].some((marker) =>
-          value.toLowerCase().includes(marker),
-        ),
-    );
-  }
-
-  return null;
-}
-
 function isExplicitlyNonAdmin(session: AuthSession | null) {
-  return hasAdminAccessMarker(session) === false;
+  return getAuthSessionAdminAccess(session) === false;
 }
 
 function getAccountLabel(session: AuthSession | null) {
@@ -254,6 +204,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <AuthDialog
           open={authDialogOpen}
           session={authSession}
+          defaultLoginAudience="admin"
           onClose={() => setAuthDialogOpen(false)}
           onAuthenticated={handleAuthenticated}
           onLogout={clearSession}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, ShoppingCart, User, X } from "lucide-react";
-import AuthDialog from "./auth/AuthDialog";
+import AuthDialog, { type LoginAudience } from "./auth/AuthDialog";
 import { useStoredAuthSession } from "./auth/useStoredAuthSession";
 import { type AuthSession } from "@/services/auth";
 import {
@@ -175,8 +175,16 @@ export default function Header() {
     router.push(PROFILE_CARD_PATH);
   };
 
-  const handleAuthenticated = (session: AuthSession) => {
+  const handleAuthenticated = (
+    session: AuthSession,
+    loginAudience: LoginAudience = "customer",
+  ) => {
     persistSession(session);
+
+    if (loginAudience === "admin") {
+      setRedirectAfterLogin(null);
+      return;
+    }
 
     if (redirectAfterLogin) {
       const nextPath = redirectAfterLogin;

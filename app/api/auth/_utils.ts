@@ -6,6 +6,7 @@ const AUTH_API_BASE_URL =
 
 const AUTH_COOKIE_NAME = "webie_auth_token";
 
+
 type JsonRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is JsonRecord {

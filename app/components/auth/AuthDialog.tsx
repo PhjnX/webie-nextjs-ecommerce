@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -26,20 +27,57 @@ import {
 } from "@/services/auth";
 
 type AuthMode = "login" | "register" | "verify" | "forgot" | "reset";
+export type LoginAudience = "customer" | "admin";
 
 interface AuthDialogProps {
   open: boolean;
   session: AuthSession | null;
+  defaultLoginAudience?: LoginAudience;
   onClose: () => void;
-  onAuthenticated: (session: AuthSession) => void;
+  onAuthenticated: (session: AuthSession, loginAudience?: LoginAudience) => void;
   onLogout: () => void;
 }
 
+const ADMIN_LOGIN_PATH = "/admin";
 const inputClass =
   "h-12 w-full rounded-md border border-stone-200 bg-white px-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#D8C97B] focus:ring-2 focus:ring-[#D8C97B]/20";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected auth error.";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasAuthUserMarker(value: Record<string, unknown>) {
+  return [
+    "email",
+    "fullName",
+    "name",
+    "role",
+    "userRole",
+    "user_role",
+    "isAdmin",
+    "is_admin",
+    "admin",
+  ].some((key) => key in value);
+}
+
+function getResponseUser(response: AuthResponse) {
+  if (response.user) {
+    return response.user;
+  }
+
+  const data = response.data;
+  const candidates = isRecord(data)
+    ? [data.user, data.account, data.customer, data]
+    : [];
+  const user = candidates.find(
+    (value): value is AuthUser => isRecord(value) && hasAuthUserMarker(value),
+  );
+
+  return user;
 }
 
 function getUserName(user?: AuthUser) {
@@ -59,24 +97,30 @@ function createSession(
   fallbackEmail: string,
   fallbackName?: string,
 ): AuthSession {
+  const user = getResponseUser(response);
+
   return {
-    email: getUserEmail(response.user, fallbackEmail),
-    fullName: getUserName(response.user) ?? fallbackName,
-    user: response.user,
+    email: getUserEmail(user, fallbackEmail),
+    fullName: getUserName(user) ?? fallbackName,
+    user,
   };
 }
 
 export default function AuthDialog({
   open,
   session,
+  defaultLoginAudience = "customer",
   onClose,
   onAuthenticated,
   onLogout,
 }: AuthDialogProps) {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [processing, setProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [loginAudience, setLoginAudience] =
+    useState<LoginAudience>(defaultLoginAudience);
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
@@ -133,6 +177,7 @@ export default function AuthDialog({
   const closeDialog = () => {
     setErrorMessage("");
     setStatusMessage("");
+    setLoginAudience(defaultLoginAudience);
     onClose();
   };
 
@@ -243,9 +288,23 @@ export default function AuthDialog({
           : undefined,
       );
 
-      onAuthenticated(nextSession);
+      // if (
+      //   loginAudience === "admin" &&
+      //   getAuthSessionAdminAccess(nextSession) !== true
+      // ) {
+      //   await logoutAccount().catch(() => undefined);
+      //   throw new Error("This account is not marked as an admin account.");
+      // }
+
+      onAuthenticated(nextSession, loginAudience);
       setStatusMessage(response.message || "Signed in successfully.");
-      window.setTimeout(closeDialog, 450);
+      window.setTimeout(() => {
+        closeDialog();
+
+        if (loginAudience === "admin") {
+          router.push(ADMIN_LOGIN_PATH);
+        }
+      }, 450);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -340,7 +399,9 @@ export default function AuthDialog({
     } finally {
       onLogout();
       setProcessing(false);
-      setMode("login");
+      // setMode("login");
+      closeDialog();
+
     }
   };
 
@@ -463,6 +524,26 @@ export default function AuthDialog({
 
             {mode === "login" ? (
               <form onSubmit={handleLogin} className="space-y-4">
+                <fieldset className="grid grid-cols-2 gap-1 rounded-md bg-stone-100 p-1">
+                  <legend className="sr-only">Login account type</legend>
+                  {(["customer", "admin"] as const).map((audience) => (
+                    <button
+                      key={audience}
+                      type="button"
+                      onClick={() => setLoginAudience(audience)}
+                      disabled={processing}
+                      aria-pressed={loginAudience === audience}
+                      className={`h-10 rounded text-xs font-bold uppercase tracking-[0.16em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                        loginAudience === audience
+                          ? "bg-stone-950 text-white shadow-sm"
+                          : "text-stone-500 hover:text-stone-950"
+                      }`}
+                    >
+                      {audience === "admin" ? "Admin" : "Customer"}
+                    </button>
+                  ))}
+                </fieldset>
+
                 <label className="block">
                   <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
                     <Mail size={14} />
@@ -523,7 +604,7 @@ export default function AuthDialog({
                   {processing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : null}
-                  Sign in
+                  Sign in as {loginAudience}
                 </button>
               </form>
             ) : null}

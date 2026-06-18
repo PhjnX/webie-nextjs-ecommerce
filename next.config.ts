@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
         hostname: "webievietnam.odoo.com",
         pathname: "/web/image/**",
       },
+      {
+          protocol: "https",
+          hostname: "coral-mouse-470858.hostingersite.com",
+          pathname: "/odoo/products/**",
+        },
     ],
   },
 };

@@ -76,10 +76,11 @@ type ProductApiResponsePayload =
   | ProductApiResponse
   | ApiProduct[]
   | ApiProduct;
+const API_BASE_URL =
+    process.env.API_BASE_URL ?? "https://coral-mouse-470858.hostingersite.com";
 
 const PRODUCTS_API_URL =
-  process.env.PRODUCTS_API_URL ??
-  "https://coral-mouse-470858.hostingersite.com/odoo/products";
+    process.env.PRODUCTS_API_URL ?? `${API_BASE_URL}/odoo/products`;
 const PRODUCTS_API_BASE_URL = PRODUCTS_API_URL.replace(/\/+$/, "");
 const PRODUCT_CATEGORIES_API_URL =
   process.env.PRODUCT_CATEGORIES_API_URL ??
@@ -204,7 +205,7 @@ function buildProductDetailUrl(productId: number) {
 function mapProduct(item: ApiProduct): Product {
   const category = item.category ?? {};
   const price = item.price ?? 0;
-  const imageUrl = item.image_url?.trim() || FALLBACK_IMAGE;
+  const imageUrl = `${PRODUCTS_API_URL}/${item.id}/image`;
 
   return {
     id: item.id,

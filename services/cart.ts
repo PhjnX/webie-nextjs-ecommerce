@@ -31,7 +31,12 @@ export class CartApiError extends Error {
 
 export const CART_UPDATED_EVENT = "webie_cart_updated";
 
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "https://coral-mouse-470858.hostingersite.com";
+
 const FALLBACK_PRODUCT_IMAGE = "/images/services/website-templates.png";
+
 const ADD_CART_PATCH_FALLBACK_STATUSES = new Set([400, 404, 409]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,6 +79,43 @@ function readNumber(record: Record<string, unknown>, keys: string[]) {
   return 0;
 }
 
+function joinUrl(baseUrl: string, path: string) {
+  return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+}
+
+function normalizeProductImageUrl(imageUrl: string) {
+  const value = imageUrl.trim();
+
+  if (!value) {
+    return FALLBACK_PRODUCT_IMAGE;
+  }
+
+  if (
+      value.startsWith("http://") ||
+      value.startsWith("https://") ||
+      value.startsWith("data:") ||
+      value.startsWith("blob:")
+  ) {
+    return value;
+  }
+
+  if (value.startsWith("//")) {
+    return `https:${value}`;
+  }
+
+  // Ảnh local trong thư mục public/images
+  if (value.startsWith("/images/")) {
+    return value;
+  }
+
+  // Ảnh backend dạng /odoo/products/38/image
+  if (value.startsWith("/")) {
+    return joinUrl(API_BASE_URL, value);
+  }
+
+  return joinUrl(API_BASE_URL, value);
+}
+
 function normalizeCartItem(value: unknown): CartItem | null {
   if (!isRecord(value)) {
     return null;
@@ -89,12 +131,20 @@ function normalizeCartItem(value: unknown): CartItem | null {
   const quantity = readNumber(value, ["quantity", "qty"]);
   const productSku = readString(value, ["productSku", "product_sku", "sku"]);
 
+  const rawProductImageUrl = readString(value, [
+    "productImageUrl",
+    "product_image_url",
+    "imageUrl",
+    "image_url",
+    "image",
+  ]);
+
   return {
     id: Number.isInteger(id) && id > 0 ? id : productId,
     productId,
     productName:
-      readString(value, ["productName", "product_name", "name"]) ||
-      `Product #${productId}`,
+        readString(value, ["productName", "product_name", "name"]) ||
+        `Product #${productId}`,
     productPrice: readString(value, [
       "productPrice",
       "product_price",
@@ -102,14 +152,9 @@ function normalizeCartItem(value: unknown): CartItem | null {
       "listPrice",
       "list_price",
     ]),
-    productImageUrl:
-      readString(value, [
-        "productImageUrl",
-        "product_image_url",
-        "imageUrl",
-        "image_url",
-        "image",
-      ]) || FALLBACK_PRODUCT_IMAGE,
+    productImageUrl: normalizeProductImageUrl(
+        rawProductImageUrl || `/odoo/products/${productId}/image`,
+    ),
     productSku: productSku || null,
     quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
   };
@@ -117,9 +162,9 @@ function normalizeCartItem(value: unknown): CartItem | null {
 
 function extractCartItems(value: unknown): CartItem[] {
   if (Array.isArray(value)) {
-    return value.map(normalizeCartItem).filter((item): item is CartItem =>
-      Boolean(item),
-    );
+    return value
+        .map(normalizeCartItem)
+        .filter((item): item is CartItem => Boolean(item));
   }
 
   if (!isRecord(value)) {
@@ -148,7 +193,7 @@ function extractCartItems(value: unknown): CartItem[] {
 }
 
 async function readApiResponse<TData>(
-  response: Response,
+    response: Response,
 ): Promise<ApiResponse<TData>> {
   const contentType = response.headers.get("content-type");
   const responseText = await response.text();
@@ -157,7 +202,7 @@ async function readApiResponse<TData>(
     try {
       return JSON.parse(responseText) as ApiResponse<TData>;
     } catch {
-      // Fall through to the diagnostic response below.
+      // Fall through to diagnostic response below.
     }
   }
 
@@ -169,9 +214,10 @@ async function readApiResponse<TData>(
   }
 
   const normalizedText = responseText.replace(/\s+/g, " ").trim();
+
   const responsePreview = normalizedText
-    ? ` ${normalizedText.slice(0, 220)}`
-    : "";
+      ? ` ${normalizedText.slice(0, 220)}`
+      : "";
 
   return {
     success: false,
@@ -179,22 +225,28 @@ async function readApiResponse<TData>(
   };
 }
 
-async function sendCartRequest<TData>(
-  path: string,
-  options: RequestInit = {},
+async function sendCartRequest<TData = unknown>(
+    path: string,
+    options: RequestInit = {},
 ) {
+  const headers = new Headers(options.headers);
+
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(path, {
     ...options,
-    headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-    },
+    headers,
+    cache: "no-store",
   });
+
   const payload = await readApiResponse<TData>(response);
 
   if (!response.ok || payload.success === false) {
     throw new CartApiError(
-      payload.message || "Cart request failed.",
-      response.status,
+        payload.message || "Cart request failed.",
+        response.status,
     );
   }
 
@@ -240,12 +292,15 @@ export async function addCartItem(productId: number) {
   try {
     response = await sendCartRequest("/api/cart/add", {
       method: "POST",
-      body: JSON.stringify({ productId, quantity: 1 }),
+      body: JSON.stringify({
+        productId,
+        quantity: 1,
+      }),
     });
   } catch (error) {
     if (
-      error instanceof CartApiError &&
-      ADD_CART_PATCH_FALLBACK_STATUSES.has(error.status)
+        error instanceof CartApiError &&
+        ADD_CART_PATCH_FALLBACK_STATUSES.has(error.status)
     ) {
       const cartItemId = await findCartItemIdByProductId(productId);
 
@@ -282,10 +337,10 @@ export async function deleteCartItem(id: number) {
   }
 
   const response = await sendCartRequest(
-    `/api/cart/item?id=${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-    },
+      `/api/cart/item?id=${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
   );
 
   notifyCartUpdated();
@@ -303,8 +358,8 @@ export async function updateCartItemQuantity(id: number, quantity: number) {
 
   if (!Number.isInteger(quantity) || quantity < 0) {
     throw new CartApiError(
-      "Quantity must be zero or a positive whole number.",
-      400,
+        "Quantity must be zero or a positive whole number.",
+        400,
     );
   }
 
@@ -314,7 +369,9 @@ export async function updateCartItemQuantity(id: number, quantity: number) {
 
   const response = await sendCartRequest(`/api/cart/item/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ quantity }),
+    body: JSON.stringify({
+      quantity,
+    }),
   });
 
   notifyCartUpdated();

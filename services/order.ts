@@ -46,6 +46,9 @@ export class OrderApiError extends Error {
 
 const FALLBACK_PRODUCT_IMAGE = "/images/services/website-templates.png";
 const DEFAULT_CHECKOUT_NOTE = "Checkout from profile card.";
+const PRODUCTS_API_URL =
+  process.env.NEXT_PUBLIC_PRODUCTS_API_URL ??
+  "https://coral-mouse-470858.hostingersite.com/odoo/products";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -151,6 +154,8 @@ function normalizeOrderItem(
     "price",
   ]);
 
+  const imageURL = `${PRODUCTS_API_URL}/${productId}/image`;
+
   return {
     id: readNumber(value, ["id", "itemId", "item_id"]) || index + 1,
     productId,
@@ -159,12 +164,7 @@ function normalizeOrderItem(
       `Product #${productId}`,
     productPrice,
     productImageUrl:
-      readString(value, [
-        "productImageUrl",
-        "product_image_url",
-        "imageUrl",
-        "image_url",
-      ]) || FALLBACK_PRODUCT_IMAGE,
+        imageURL|| FALLBACK_PRODUCT_IMAGE,
     productSku: readString(value, ["productSku", "product_sku", "sku"]) || null,
     quantity,
     subtotal:

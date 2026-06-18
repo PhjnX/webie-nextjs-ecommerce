@@ -38,8 +38,8 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected admin error.";
 }
 
-function isLockedStatus(status: string) {
-  return ["locked", "blocked", "disabled", "inactive"].includes(
+function isBlockedStatus(status: string) {
+  return ["blocked", "locked", "disabled", "inactive", "deleted"].includes(
     status.toLowerCase(),
   );
 }
@@ -136,8 +136,8 @@ export default function UserDetailClient({ userId }: { userId: string }) {
     () => (user ? getAdditionalFields(user) : []),
     [user],
   );
-  const locked = user ? isLockedStatus(user.status) : false;
-  const nextStatus = locked ? "active" : "locked";
+  const blocked = user ? isBlockedStatus(user.status) : false;
+  const nextStatus = blocked ? "active" : "blocked";
 
   const handleUpdateUser = async (payload: UpdateAdminUserPayload) => {
     if (!user || savingEdit) {
@@ -151,9 +151,15 @@ export default function UserDetailClient({ userId }: { userId: string }) {
 
     try {
       const result = await updateAdminUser(user.id, payload);
-      const nextUser = {
+      const fallbackUser = {
         ...user,
-        ...payload,
+        name: payload.fullName,
+        phone: payload.phone ?? "",
+        address: payload.address,
+        role: payload.role || user.role,
+      };
+      const nextUser = {
+        ...fallbackUser,
         ...(result.user ?? {}),
       };
 
@@ -269,12 +275,12 @@ export default function UserDetailClient({ userId }: { userId: string }) {
               onClick={() => setConfirmAction({ type: "status", nextStatus })}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-amber-200 px-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-50"
             >
-              {locked ? (
+              {blocked ? (
                 <Unlock className="h-4 w-4" aria-hidden="true" />
               ) : (
                 <Lock className="h-4 w-4" aria-hidden="true" />
               )}
-              {locked ? "Unlock user" : "Lock user"}
+              {blocked ? "Unblock user" : "Block user"}
             </button>
             <button
               type="button"
@@ -330,21 +336,23 @@ export default function UserDetailClient({ userId }: { userId: string }) {
         title={
           confirmAction?.type === "delete"
             ? "Delete user?"
-            : nextStatus === "locked"
-              ? "Lock account?"
-              : "Unlock account?"
+            : nextStatus === "blocked"
+              ? "Block account?"
+              : "Unblock account?"
         }
         description={
           confirmAction?.type === "delete"
             ? `${user.name} will be permanently removed.`
-            : `${user.name} will be marked as ${getAdminStatusLabel(nextStatus)}.`
+            : nextStatus === "blocked"
+              ? `${user.name} will be blocked and cannot sign in.`
+              : `${user.name} will be marked as active.`
         }
         confirmLabel={
           confirmAction?.type === "delete"
             ? "Delete user"
-            : nextStatus === "locked"
-              ? "Lock account"
-              : "Unlock account"
+            : nextStatus === "blocked"
+              ? "Block account"
+              : "Unblock account"
         }
         destructive={confirmAction?.type === "delete"}
         loading={confirmLoading}

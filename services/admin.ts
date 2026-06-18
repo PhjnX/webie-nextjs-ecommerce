@@ -1,9 +1,16 @@
 export interface AdminStats {
   totalUsers: number;
+  verifiedUsers: number;
+  activeUsers: number;
   totalOrders: number;
   totalRevenue: number;
+  revenueThisMonth: number;
   pendingOrders: number;
+  paidOrders: number;
+  processingOrders: number;
   completedOrders: number;
+  cancelledOrders: number;
+  latestOrders: AdminOrder[];
   raw?: Record<string, unknown>;
 }
 
@@ -21,11 +28,10 @@ export interface AdminUser {
 }
 
 export interface UpdateAdminUserPayload {
-  name: string;
-  email: string;
+  fullName: string;
   phone?: string;
+  address?: string;
   role?: string;
-  status?: string;
 }
 
 export interface AdminOrderItem {
@@ -215,6 +221,16 @@ function normalizeStatus(value: string, fallback = "unknown") {
   return status || fallback;
 }
 
+function normalizeAccountStatus(value: string, fallback = "active") {
+  const status = normalizeStatus(value, fallback);
+
+  if (status === "locked") {
+    return "blocked";
+  }
+
+  return status;
+}
+
 function normalizeUser(value: unknown): AdminUser | null {
   if (!isRecord(value)) {
     return null;
@@ -237,15 +253,15 @@ function normalizeUser(value: unknown): AdminUser | null {
     "disabled",
   ]);
   const status = locked === true
-    ? "locked"
-    : normalizeStatus(
+    ? "blocked"
+    : normalizeAccountStatus(
         readString(record, [
           "status",
           "accountStatus",
           "account_status",
           "state",
         ]),
-        locked === false ? "active" : "unknown",
+        locked === false ? "active" : "active",
       );
 
   return {
@@ -263,7 +279,7 @@ function normalizeUser(value: unknown): AdminUser | null {
     phone: readString(record, ["phone", "phoneNumber", "phone_number"]),
     role: normalizeStatus(
       readString(record, ["role", "userRole", "user_role", "type"]),
-      "customer",
+      "user",
     ),
     status,
     createdAt: readString(record, [
@@ -516,34 +532,91 @@ export async function getAdminStats() {
     method: "GET",
   });
   const record = unwrapRecord(response.data, ["stats", "dashboard"]);
+  const userStats = findRecord(record, ["users", "userStats", "user_stats"]);
+  const orderStats = findRecord(record, ["orders", "orderStats", "order_stats"]);
+  const revenueStats = findRecord(record, [
+    "revenue",
+    "revenueStats",
+    "revenue_stats",
+    "sales",
+  ]);
+  const latestOrders = extractCollection(record, [
+    "latestOrders",
+    "latest_orders",
+    "recentOrders",
+    "recent_orders",
+  ])
+    .map(normalizeOrder)
+    .filter((order): order is AdminOrder => Boolean(order));
 
   return {
     totalUsers:
       readNumber(record, ["totalUsers", "total_users", "userCount", "user_count"]) ||
-      extractCollection(record, ["users", "userList", "user_list"]).length,
+      readNumber(userStats, ["total", "totalUsers", "total_users", "count"]) ||
+      extractCollection(record, ["userList", "user_list", "customers"]).length,
+    verifiedUsers:
+      readNumber(record, ["verifiedUsers", "verified_users"]) ||
+      readNumber(userStats, ["verified", "verifiedUsers", "verified_users"]),
+    activeUsers:
+      readNumber(record, ["activeUsers", "active_users"]) ||
+      readNumber(userStats, ["active", "activeUsers", "active_users"]),
     totalOrders:
       readNumber(record, ["totalOrders", "total_orders", "orderCount", "order_count"]) ||
-      extractCollection(record, ["orders", "orderList", "order_list"]).length,
-    totalRevenue: readNumber(record, [
-      "totalRevenue",
-      "total_revenue",
-      "revenue",
-      "sales",
-      "grossRevenue",
-      "gross_revenue",
-    ]),
+      readNumber(orderStats, ["total", "totalOrders", "total_orders", "count"]) ||
+      extractCollection(record, ["orderList", "order_list", "items", "results"]).length,
+    totalRevenue:
+      readNumber(record, [
+        "totalRevenue",
+        "total_revenue",
+        "grossRevenue",
+        "gross_revenue",
+      ]) ||
+      readNumber(revenueStats, [
+        "total",
+        "totalRevenue",
+        "total_revenue",
+        "grossRevenue",
+        "gross_revenue",
+      ]),
+    revenueThisMonth:
+      readNumber(record, ["revenueThisMonth", "revenue_this_month", "thisMonth", "this_month"]) ||
+      readNumber(revenueStats, [
+        "thisMonth",
+        "this_month",
+        "month",
+        "monthly",
+        "currentMonth",
+        "current_month",
+      ]),
     pendingOrders: readNumber(record, [
       "pendingOrders",
       "pending_orders",
       "pendingOrderCount",
       "pending_order_count",
-    ]),
+    ]) || readNumber(orderStats, ["pending", "pendingOrders", "pending_orders"]),
+    paidOrders:
+      readNumber(record, ["paidOrders", "paid_orders"]) ||
+      readNumber(orderStats, ["paid", "paidOrders", "paid_orders"]),
+    processingOrders:
+      readNumber(record, ["processingOrders", "processing_orders"]) ||
+      readNumber(orderStats, ["processing", "processingOrders", "processing_orders"]),
     completedOrders: readNumber(record, [
       "completedOrders",
       "completed_orders",
       "completedOrderCount",
       "completed_order_count",
-    ]),
+    ]) || readNumber(orderStats, ["completed", "completedOrders", "completed_orders"]),
+    cancelledOrders:
+      readNumber(record, ["cancelledOrders", "cancelled_orders", "canceledOrders", "canceled_orders"]) ||
+      readNumber(orderStats, [
+        "cancelled",
+        "canceled",
+        "cancelledOrders",
+        "cancelled_orders",
+        "canceledOrders",
+        "canceled_orders",
+      ]),
+    latestOrders,
     raw: record,
   } satisfies AdminStats;
 }
@@ -580,17 +653,23 @@ export async function updateAdminUser(
   id: string,
   payload: UpdateAdminUserPayload,
 ) {
+  const requestPayload = {
+    fullName: payload.fullName.trim(),
+    phone: payload.phone?.trim() ?? "",
+    address: payload.address?.trim() ?? "",
+    role: payload.role?.trim() || "user",
+  };
   const response = await sendAdminRequest<unknown>(
     `/api/admin/users/${encodeURIComponent(id)}`,
     {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(requestPayload),
     },
   );
 
   return {
     message: response.message,
-    user: normalizeUser(response.data) ?? ({ ...payload, id } as AdminUser),
+    user: normalizeUser(response.data),
   };
 }
 
@@ -606,11 +685,12 @@ export async function deleteAdminUser(id: string) {
 }
 
 export async function updateAdminUserStatus(id: string, status: string) {
+  const normalizedStatus = normalizeAccountStatus(status, "active");
   const response = await sendAdminRequest<unknown>(
     `/api/admin/users/${encodeURIComponent(id)}/status`,
     {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: normalizedStatus }),
     },
   );
 

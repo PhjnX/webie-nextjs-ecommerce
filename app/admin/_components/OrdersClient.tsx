@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, Pencil, Search } from "lucide-react";
+import { Eye, Pencil, Search, ShoppingBag } from "lucide-react";
 import {
   formatAdminCurrency,
   formatAdminDate,
@@ -34,6 +34,10 @@ function matchesOrder(order: AdminOrder, query: string) {
   return [order.id, order.customerName, order.customerEmail]
     .filter(Boolean)
     .some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function formatCompactNumber(value: number) {
+  return value.toLocaleString("en");
 }
 
 export default function OrdersClient() {
@@ -148,19 +152,28 @@ export default function OrdersClient() {
         onDismiss={() => setActionErrorMessage("")}
       />
 
-      <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
-          <div>
-            <h2 className="text-lg font-bold text-stone-950">Order list</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              {orders.length.toLocaleString("en")} total order
-              {orders.length === 1 ? "" : "s"}
-            </p>
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 xl:grid-cols-[330px_1fr] xl:items-end">
+        <article className="rounded-lg border border-[#eee7d9] bg-white p-5 shadow-[0_10px_30px_rgba(37,32,12,0.05)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-stone-500">Total orders</p>
+              <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-stone-950">
+                {formatCompactNumber(orders.length)}
+              </p>
+            </div>
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-md bg-stone-100 text-stone-700">
+              <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+            </span>
           </div>
+          <p className="mt-5 text-sm font-medium leading-6 text-stone-500">
+            {formatCompactNumber(filteredOrders.length)} showing after search and filter
+          </p>
+        </article>
 
-          <label className="relative w-full lg:w-80">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_240px] xl:justify-self-end xl:w-full xl:max-w-[760px]">
+          <label className="relative w-full">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
               aria-hidden="true"
             />
             <input
@@ -168,16 +181,16 @@ export default function OrdersClient() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search order, customer, email"
-              className="h-11 w-full rounded-md border border-stone-200 bg-white pl-10 pr-3 text-sm outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+              className="h-12 w-full rounded-md border border-[#eee7d9] bg-white pl-12 pr-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
             />
           </label>
 
-          <label className="w-full lg:w-56">
+          <label className="w-full">
             <span className="sr-only">Filter by order status</span>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-11 w-full rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
+              className="h-12 w-full rounded-md border border-[#eee7d9] bg-white px-4 text-base font-semibold text-stone-700 outline-none transition focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
             >
               <option value="all">All statuses</option>
               {statusOptions.map((status) => (

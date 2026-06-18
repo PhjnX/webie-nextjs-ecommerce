@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import {
+  getAdminStatusLabel,
   type AdminUser,
   type UpdateAdminUserPayload,
 } from "@/services/admin";
@@ -10,6 +11,8 @@ import { Notice } from "./AdminUi";
 
 const fieldClass =
   "h-11 w-full rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200";
+const textareaClass =
+  "min-h-24 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200";
 const labelClass = "text-xs font-bold uppercase tracking-[0.14em] text-stone-500";
 
 export default function UserEditDialog({
@@ -28,11 +31,10 @@ export default function UserEditDialog({
   onSubmit: (payload: UpdateAdminUserPayload) => void;
 }) {
   const [form, setForm] = useState<UpdateAdminUserPayload>(() => ({
-    name: user?.name ?? "",
-    email: user?.email ?? "",
+    fullName: user?.name ?? "",
     phone: user?.phone ?? "",
     role: user?.role ?? "",
-    status: user?.status ?? "active",
+    address: user?.address ?? "",
   }));
   const [validationMessage, setValidationMessage] = useState("");
 
@@ -44,20 +46,14 @@ export default function UserEditDialog({
     event.preventDefault();
 
     const payload = {
-      name: form.name.trim(),
-      email: form.email.trim(),
+      fullName: form.fullName.trim(),
       phone: form.phone?.trim(),
+      address: form.address?.trim(),
       role: form.role?.trim(),
-      status: form.status?.trim(),
     };
 
-    if (!payload.name) {
-      setValidationMessage("Name is required.");
-      return;
-    }
-
-    if (!payload.email) {
-      setValidationMessage("Email is required.");
+    if (!payload.fullName) {
+      setValidationMessage("Full name is required.");
       return;
     }
 
@@ -101,13 +97,13 @@ export default function UserEditDialog({
 
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="space-y-2 md:col-span-2">
-            <span className={labelClass}>Name</span>
+            <span className={labelClass}>Full name</span>
             <input
               type="text"
               required
-              value={form.name}
+              value={form.fullName}
               onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
+                setForm((current) => ({ ...current, fullName: event.target.value }))
               }
               className={fieldClass}
             />
@@ -117,12 +113,9 @@ export default function UserEditDialog({
             <span className={labelClass}>Email</span>
             <input
               type="email"
-              required
-              value={form.email}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, email: event.target.value }))
-              }
-              className={fieldClass}
+              value={user.email || "Not available"}
+              disabled
+              className={`${fieldClass} bg-stone-50 text-stone-500`}
             />
           </label>
 
@@ -140,29 +133,30 @@ export default function UserEditDialog({
 
           <label className="space-y-2">
             <span className={labelClass}>Role</span>
-            <input
-              type="text"
-              value={form.role ?? ""}
+            <select
+              value={form.role ?? "user"}
               onChange={(event) =>
                 setForm((current) => ({ ...current, role: event.target.value }))
               }
               className={fieldClass}
-            />
+            >
+              {form.role && !["user", "admin"].includes(form.role) ? (
+                <option value={form.role}>{getAdminStatusLabel(form.role)}</option>
+              ) : null}
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
           </label>
 
           <label className="space-y-2 md:col-span-2">
-            <span className={labelClass}>Status</span>
-            <select
-              value={form.status ?? ""}
+            <span className={labelClass}>Address</span>
+            <textarea
+              value={form.address ?? ""}
               onChange={(event) =>
-                setForm((current) => ({ ...current, status: event.target.value }))
+                setForm((current) => ({ ...current, address: event.target.value }))
               }
-              className={fieldClass}
-            >
-              <option value="active">Active</option>
-              <option value="locked">Locked</option>
-              <option value="inactive">Inactive</option>
-            </select>
+              className={textareaClass}
+            />
           </label>
         </div>
 

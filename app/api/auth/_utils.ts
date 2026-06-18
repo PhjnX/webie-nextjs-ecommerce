@@ -25,6 +25,30 @@ function readString(record: JsonRecord, keys: string[]) {
   return undefined;
 }
 
+function readBoolean(record: JsonRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const normalizedValue = value.trim().toLowerCase();
+
+      if (["true", "1", "yes", "blocked", "locked", "deleted"].includes(normalizedValue)) {
+        return true;
+      }
+
+      if (["false", "0", "no", "active"].includes(normalizedValue)) {
+        return false;
+      }
+    }
+  }
+
+  return null;
+}
+
 function stripSensitiveFields(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(stripSensitiveFields);
@@ -136,6 +160,40 @@ function normalizePayload(
   };
 }
 
+function isBlockedOrDeletedUser(user: JsonRecord | undefined) {
+  if (!user) {
+    return false;
+  }
+
+  const locked = readBoolean(user, [
+    "blocked",
+    "isBlocked",
+    "is_blocked",
+    "locked",
+    "isLocked",
+    "is_locked",
+    "deleted",
+    "isDeleted",
+    "is_deleted",
+  ]);
+
+  if (locked === true) {
+    return true;
+  }
+
+  const status = readString(user, [
+    "status",
+    "accountStatus",
+    "account_status",
+    "state",
+  ])?.toLowerCase();
+
+  return Boolean(
+    status &&
+      ["blocked", "locked", "disabled", "inactive", "deleted"].includes(status),
+  );
+}
+
 async function readUpstreamPayload(response: Response) {
   const contentType = response.headers.get("content-type");
 
@@ -219,6 +277,21 @@ export async function postToAuthApi({
       : upstreamResponse.status >= 400
         ? upstreamResponse.status
         : 400;
+
+    if (
+      setAuthCookie &&
+      normalizedPayload.success &&
+      isBlockedOrDeletedUser(normalizedPayload.user)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This account is blocked or deleted and cannot sign in.",
+        },
+        { status: 403 },
+      );
+    }
+
     const response = NextResponse.json(normalizedPayload, { status });
     const nextToken = setAuthCookie ? extractToken(upstreamPayload) : undefined;
 

@@ -52,8 +52,8 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected admin error.";
 }
 
-function isLockedStatus(status: string) {
-  return ["locked", "blocked", "disabled", "inactive"].includes(
+function isBlockedStatus(status: string) {
+  return ["blocked", "locked", "disabled", "inactive", "deleted"].includes(
     status.toLowerCase(),
   );
 }
@@ -128,7 +128,7 @@ function RolePill({ role }: { role: string }) {
 function UserStatusPill({ status }: { status: string }) {
   const normalizedStatus = status.toLowerCase();
   const active = normalizedStatus === "active";
-  const inactive = ["inactive", "locked", "blocked", "disabled"].includes(
+  const inactive = ["inactive", "locked", "blocked", "disabled", "deleted"].includes(
     normalizedStatus,
   );
   const className = active
@@ -265,9 +265,15 @@ export default function UsersClient() {
 
     try {
       const result = await updateAdminUser(editingUser.id, payload);
-      const nextUser = {
+      const fallbackUser = {
         ...editingUser,
-        ...payload,
+        name: payload.fullName,
+        phone: payload.phone ?? "",
+        address: payload.address,
+        role: payload.role || editingUser.role,
+      };
+      const nextUser = {
+        ...fallbackUser,
         ...(result.user ?? {}),
       };
 
@@ -332,19 +338,21 @@ export default function UsersClient() {
   const confirmTitle =
     confirmAction?.type === "delete"
       ? "Delete user?"
-      : confirmAction?.nextStatus === "locked"
-        ? "Lock account?"
-        : "Unlock account?";
+      : confirmAction?.nextStatus === "blocked"
+        ? "Block account?"
+        : "Unblock account?";
   const confirmDescription =
     confirmAction?.type === "delete"
       ? `${confirmAction.user.name} will be removed from the admin user list.`
-      : `${confirmAction?.user.name ?? "This user"} will be marked as ${getAdminStatusLabel(confirmAction?.nextStatus ?? "")}.`;
+      : confirmAction?.nextStatus === "blocked"
+        ? `${confirmAction.user.name} will be blocked and cannot sign in.`
+        : `${confirmAction?.user.name ?? "This user"} will be marked as active.`;
   const confirmLabel =
     confirmAction?.type === "delete"
       ? "Delete user"
-      : confirmAction?.nextStatus === "locked"
-        ? "Lock account"
-        : "Unlock account";
+      : confirmAction?.nextStatus === "blocked"
+        ? "Block account"
+        : "Unblock account";
 
   if (loading) {
     return <LoadingPanel label="Loading users" />;
@@ -529,8 +537,8 @@ export default function UsersClient() {
                   </tr>
                 ) : null}
                 {visibleUsers.map((user) => {
-                  const locked = isLockedStatus(user.status);
-                  const nextStatus = locked ? "active" : "locked";
+                  const blocked = isBlockedStatus(user.status);
+                  const nextStatus = blocked ? "active" : "blocked";
 
                   return (
                     <tr key={user.id} className="hover:bg-stone-50/70">
@@ -591,10 +599,10 @@ export default function UsersClient() {
                               })
                             }
                             className="flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition hover:bg-amber-50 hover:text-amber-700"
-                            aria-label={`${locked ? "Unlock" : "Lock"} ${user.name}`}
-                            title={locked ? "Unlock account" : "Lock account"}
+                            aria-label={`${blocked ? "Unblock" : "Block"} ${user.name}`}
+                            title={blocked ? "Unblock account" : "Block account"}
                           >
-                            {locked ? (
+                            {blocked ? (
                               <Unlock className="h-4 w-4" aria-hidden="true" />
                             ) : (
                               <Lock className="h-4 w-4" aria-hidden="true" />

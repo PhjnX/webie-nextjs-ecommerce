@@ -9,6 +9,26 @@ interface AdminUserStatusRouteContext {
   params: Promise<{ id: string }>;
 }
 
+function normalizeUserStatusBody(body: unknown) {
+  const rawStatus = (body as { status?: unknown }).status;
+  const status = typeof rawStatus === "string"
+    ? rawStatus.trim().toLowerCase()
+    : "";
+  const normalizedStatus = status === "locked" ? "blocked" : status;
+
+  if (!["active", "blocked"].includes(normalizedStatus)) {
+    return {
+      error: "status must be active or blocked.",
+    };
+  }
+
+  return {
+    payload: {
+      status: normalizedStatus,
+    },
+  };
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: AdminUserStatusRouteContext,
@@ -27,11 +47,23 @@ export async function PATCH(
     );
   }
 
+  const normalizedBody = normalizeUserStatusBody(body);
+
+  if (normalizedBody.error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: normalizedBody.error,
+      },
+      { status: 400 },
+    );
+  }
+
   return proxyJsonToAdminApi({
     request,
     path: `/admin/users/${encodeURIComponent(id)}/status`,
     method: "PATCH",
-    body,
+    body: normalizedBody.payload,
     fallbackMessage: "User status updated successfully.",
     failedFallbackMessage: "Unable to update user status.",
   });

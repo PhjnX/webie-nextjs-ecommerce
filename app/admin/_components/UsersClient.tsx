@@ -11,7 +11,6 @@ import {
   Lock,
   Pencil,
   Search,
-  SlidersHorizontal,
   Trash2,
   Unlock,
   UsersRound,
@@ -91,6 +90,10 @@ function formatUserId(id: string) {
   }
 
   return `#${id}`;
+}
+
+function formatCompactNumber(value: number) {
+  return value.toLocaleString("en");
 }
 
 function getCompactDate(value: string) {
@@ -186,7 +189,6 @@ export default function UsersClient() {
   const [successMessage, setSuccessMessage] = useState("");
   const [actionErrorMessage, setActionErrorMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -375,27 +377,94 @@ export default function UsersClient() {
         onDismiss={() => setActionErrorMessage("")}
       />
 
-      <section className="mx-auto w-full max-w-[1600px]">
-        <article className="w-full rounded-lg border border-[#fff7dd] bg-white p-8 shadow-[0_12px_34px_rgba(37,32,12,0.06)] md:w-[330px]">
-          <div className="flex items-center justify-between gap-8">
-            <div>
-              <p className="text-base font-semibold text-stone-500">
-                Total Users
-              </p>
-              <p className="mt-2 text-4xl font-extrabold tracking-tight text-stone-950">
-                {users.length.toLocaleString("en")}
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 xl:grid-cols-[330px_1fr] xl:items-end">
+        <article className="rounded-lg border border-[#eee7d9] bg-white p-5 shadow-[0_10px_30px_rgba(37,32,12,0.05)]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-stone-500">Total users</p>
+              <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-stone-950">
+                {formatCompactNumber(users.length)}
               </p>
             </div>
-            <UsersRound
-              className="h-16 w-16 text-stone-200"
-              strokeWidth={1.6}
-              aria-hidden="true"
-            />
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-md bg-stone-100 text-stone-700">
+              <UsersRound
+                className="h-5 w-5"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+            </span>
           </div>
-          <p className="mt-8 text-sm font-bold text-emerald-600">
-            Live data from admin API
+          <p className="mt-5 text-sm font-medium leading-6 text-stone-500">
+            {formatCompactNumber(filteredUsers.length)} showing after search and filter
           </p>
         </article>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_200px_200px_auto] xl:justify-self-end xl:w-full xl:max-w-[980px]">
+          <label className="relative w-full">
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search name or email"
+              className="h-12 w-full rounded-md border border-[#eee7d9] bg-white pl-12 pr-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
+            />
+          </label>
+
+          <label className="w-full">
+            <span className="sr-only">Filter by role</span>
+            <select
+              value={roleFilter}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-12 w-full rounded-md border border-[#eee7d9] bg-white px-4 text-base font-semibold text-stone-700 outline-none transition focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
+            >
+              <option value="all">All roles</option>
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {getAdminStatusLabel(role)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="w-full">
+            <span className="sr-only">Filter by user status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-12 w-full rounded-md border border-[#eee7d9] bg-white px-4 text-base font-semibold text-stone-700 outline-none transition focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
+            >
+              <option value="all">All statuses</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {getAdminStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => exportUsersCsv(filteredUsers)}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-md border border-[#eee7d9] bg-white text-stone-600 transition hover:bg-stone-50"
+            aria-label="Download filtered users CSV"
+            title="Download filtered users CSV"
+          >
+            <Download className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </section>
 
       {users.length === 0 ? (
@@ -405,102 +474,6 @@ export default function UsersClient() {
         />
       ) : (
         <section className="mx-auto w-full max-w-[1600px] overflow-hidden rounded-lg border border-[#eee7d9] bg-white shadow-[0_16px_46px_rgba(37,32,12,0.06)]">
-          <div className="flex flex-col gap-4 border-b border-[#d8d2c7] p-5 md:flex-row md:items-center md:justify-between md:p-7">
-            <label className="relative w-full md:max-w-[520px]">
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-600"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Search name or email..."
-                className="h-12 w-full rounded-full border border-transparent bg-[#e8eefd] pl-12 pr-4 text-base font-medium text-stone-900 outline-none transition placeholder:text-stone-500 focus:border-[#c7cfeb] focus:ring-2 focus:ring-[#dfe7ff]"
-              />
-            </label>
-
-            <div className="flex flex-wrap gap-3 md:justify-end">
-              <button
-                type="button"
-                onClick={() => setFilterPanelOpen((current) => !current)}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-[#cfc6b8] bg-white px-5 text-sm font-bold text-stone-600 transition hover:bg-stone-50"
-              >
-                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-                Advanced Filters
-              </button>
-              <button
-                type="button"
-                onClick={() => exportUsersCsv(filteredUsers)}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-md border border-[#cfc6b8] bg-white text-stone-600 transition hover:bg-stone-50"
-                aria-label="Download filtered users CSV"
-                title="Download filtered users CSV"
-              >
-                <Download className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          {filterPanelOpen ? (
-            <div className="grid grid-cols-1 gap-4 border-b border-[#eee7d9] bg-white px-5 py-5 md:grid-cols-[220px_220px_auto] md:items-end md:px-7">
-              <label className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
-                  Role
-                </span>
-                <select
-                  value={roleFilter}
-                  onChange={(event) => {
-                    setRoleFilter(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="h-11 w-full rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                >
-                  <option value="all">All roles</option>
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {getAdminStatusLabel(role)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
-                  Status
-                </span>
-                <select
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="h-11 w-full rounded-md border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 outline-none transition focus:border-stone-400 focus:ring-2 focus:ring-stone-200"
-                >
-                  <option value="all">All statuses</option>
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {getAdminStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setRoleFilter("all");
-                  setStatusFilter("all");
-                  setCurrentPage(1);
-                }}
-                className="h-11 rounded-md border border-stone-200 px-4 text-sm font-bold text-stone-600 transition hover:bg-stone-50"
-              >
-                Reset filters
-              </button>
-            </div>
-          ) : null}
 
           <div className="overflow-x-auto">
             <table className="min-w-[1080px] w-full text-left">

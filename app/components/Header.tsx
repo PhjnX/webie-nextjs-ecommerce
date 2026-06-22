@@ -225,6 +225,7 @@ export default function Header() {
                 src="/images/logo.png"
                 alt="Webie Logo"
                 fill
+                sizes="(max-width: 768px) 128px, 144px"
                 className="object-contain object-left"
                 priority
               />

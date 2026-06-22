@@ -248,6 +248,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   src="/images/logo.png"
                   alt="Webie Logo"
                   fill
+                  sizes="(max-width: 768px) 128px, 100px"
                   className="object-contain object-left"
                   priority
               />

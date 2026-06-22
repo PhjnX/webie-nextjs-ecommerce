@@ -31,6 +31,7 @@ import {
 import {
   type ChangeEvent,
   type FormEvent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -208,7 +209,28 @@ function readStoredSession() {
   }
 }
 
+function ProfilePageFallback() {
+  return (
+    <section className="min-h-screen bg-white pt-28 pb-20 md:pt-32">
+      <div className="mx-auto flex max-w-5xl items-center justify-center px-6 py-24">
+        <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading profile
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfilePageFallback />}>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get("section");
@@ -1162,8 +1184,6 @@ export default function ProfilePage() {
                     ) : (
                       <div className="space-y-5">
                         {cartItems.map((item) => {
-                          const itemTotal =
-                            parseCartPrice(item.productPrice) * item.quantity;
                           const itemBusy =
                             deletingCartItemId === item.id ||
                             updatingCartItemId === item.id;

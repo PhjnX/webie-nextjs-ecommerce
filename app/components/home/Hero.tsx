@@ -12,6 +12,7 @@ export default function Hero() {
           src="/images/banner.png"
           alt="Webie Hero Banner"
           fill
+          sizes="100vw"
           priority
           className="object-cover object-right md:object-center" // Căn lề ảnh tối ưu cho các màn hình khác nhau
         />

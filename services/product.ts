@@ -87,8 +87,21 @@ const PRODUCT_CATEGORIES_API_URL =
   `${PRODUCTS_API_BASE_URL.replace(/\/products$/, "")}/categories`;
 
 const FALLBACK_DESCRIPTION = "No description available yet.";
-const FALLBACK_IMAGE = "/images/services/website-templates.png";
 const FALLBACK_DEMO_URL = "https://vcard.webie.com.vn";
+
+async function createApiError(response: Response, label: string) {
+  const contentType = response.headers.get("content-type");
+  const responseText = await response.text().catch(() => "");
+  const normalizedText = responseText.replace(/\s+/g, " ").trim();
+  const responsePreview = normalizedText
+    ? ` Response preview: ${normalizedText.slice(0, 220)}`
+    : "";
+  const contentTypeLabel = contentType ? ` (${contentType})` : "";
+
+  return new Error(
+    `${label} failed with ${response.status} ${response.statusText}${contentTypeLabel}.${responsePreview}`,
+  );
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -237,18 +250,16 @@ export async function getProducts({
   keyword?: string | null;
 } = {}): Promise<ProductsResult> {
   try {
-    const res = await fetch(
-      buildProductsUrl({ offset, limit, categoryId, keyword }),
-      {
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-        },
+    const productsUrl = buildProductsUrl({ offset, limit, categoryId, keyword });
+    const res = await fetch(productsUrl, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
       },
-    );
+    });
 
     if (!res.ok) {
-      throw new Error(`Products API request failed with ${res.status}`);
+      throw await createApiError(res, "Products API request");
     }
 
     const result = (await res.json()) as ProductsApiResponse | ApiProduct[];
@@ -320,7 +331,7 @@ export async function getProductCategories(): Promise<ProductCategory[]> {
     });
 
     if (!res.ok) {
-      throw new Error(`Categories API request failed with ${res.status}`);
+      throw await createApiError(res, "Categories API request");
     }
 
     const result = (await res.json()) as CategoriesApiResponse;

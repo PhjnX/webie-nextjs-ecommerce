@@ -241,22 +241,22 @@ export default function OrdersClient() {
               <tbody className="divide-y divide-stone-100 bg-white">
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-stone-50/70">
-                    <td className="px-4 py-4 text-sm font-semibold text-stone-900">
+                    <td className="px-6 py-5 text-sm font-semibold text-stone-900">
                       #{order.id}
                     </td>
-                    <td className="px-4 py-4 text-sm font-semibold text-stone-900">
+                    <td className="px-6 py-5 text-sm font-semibold text-stone-900">
                       {order.customerName}
                     </td>
-                    <td className="px-4 py-4 text-sm text-stone-600">
+                    <td className="px-6 py-5 text-sm text-stone-600">
                       {order.customerEmail || "Not available"}
                     </td>
-                    <td className="px-4 py-4 text-sm font-bold text-stone-900">
+                    <td className="px-6 py-5 text-sm font-bold text-stone-900">
                       {formatAdminCurrency(order.totalAmount)}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-5">
                       <StatusBadge status={order.orderStatus} />
                     </td>
-                    <td className="px-4 py-4 text-sm text-stone-600">
+                    <td className="px-6 py-5 text-sm text-stone-600">
                       {formatAdminDate(order.createdAt)}
                     </td>
                     <td className="px-4 py-4">

@@ -519,9 +519,6 @@ export default function UsersClient() {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-4">
-                          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#fff0a8] text-sm font-bold text-[#5f592f]">
-                            {getUserInitials(user)}
-                          </span>
                           <span className="text-lg font-medium text-stone-950">
                             {user.name}
                           </span>

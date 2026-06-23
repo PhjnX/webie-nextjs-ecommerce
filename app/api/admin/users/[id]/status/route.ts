@@ -1,69 +1,20 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-  proxyJsonToAdminApi,
-  readJsonBody,
-  validateStatusBody,
-} from "../../../_utils";
+import { type NextRequest } from "next/server";
+import { proxyJsonToAdminApi } from "../../../_utils";
 
 interface AdminUserStatusRouteContext {
   params: Promise<{ id: string }>;
 }
 
-function normalizeUserStatusBody(body: unknown) {
-  const rawStatus = (body as { status?: unknown }).status;
-  const status = typeof rawStatus === "string"
-    ? rawStatus.trim().toLowerCase()
-    : "";
-  const normalizedStatus = status === "locked" ? "blocked" : status;
-
-  if (!["active", "blocked"].includes(normalizedStatus)) {
-    return {
-      error: "status must be active or blocked.",
-    };
-  }
-
-  return {
-    payload: {
-      status: normalizedStatus,
-    },
-  };
-}
-
 export async function PATCH(
-  request: NextRequest,
-  { params }: AdminUserStatusRouteContext,
+    request: NextRequest,
+    { params }: AdminUserStatusRouteContext,
 ) {
   const { id } = await params;
-  const body = await readJsonBody(request);
-  const validationError = validateStatusBody(body);
-
-  if (validationError) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: validationError,
-      },
-      { status: 400 },
-    );
-  }
-
-  const normalizedBody = normalizeUserStatusBody(body);
-
-  if (normalizedBody.error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: normalizedBody.error,
-      },
-      { status: 400 },
-    );
-  }
 
   return proxyJsonToAdminApi({
     request,
-    path: `/admin/users/${encodeURIComponent(id)}/status`,
+    path: `/admin/users/${id}/status`,
     method: "PATCH",
-    body: normalizedBody.payload,
     fallbackMessage: "User status updated successfully.",
     failedFallbackMessage: "Unable to update user status.",
   });

@@ -52,7 +52,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function isBlockedStatus(status: string) {
-  return ["blocked", "locked", "disabled", "inactive", "deleted"].includes(
+  return ["blocked"].includes(
     status.toLowerCase(),
   );
 }
@@ -313,7 +313,6 @@ export default function UsersClient() {
       } else {
         const result = await updateAdminUserStatus(
           confirmAction.user.id,
-          confirmAction.nextStatus,
         );
         const nextUser = {
           ...confirmAction.user,

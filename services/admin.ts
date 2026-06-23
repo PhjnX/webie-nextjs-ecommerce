@@ -21,6 +21,9 @@ export interface AdminUser {
   phone: string;
   role: string;
   status: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  avatarUrl?: string;
   createdAt: string;
   updatedAt?: string;
   address?: string;
@@ -231,6 +234,51 @@ function normalizeAccountStatus(value: string, fallback = "active") {
   return status;
 }
 
+function getAccountStatus(record: Record<string, unknown>) {
+  const active = readBoolean(record, [
+    "is_active",
+    "isActive",
+    "active",
+    "enabled",
+    "is_enabled",
+    "isEnabled",
+  ]);
+
+  if (active === true) {
+    return "active";
+  }
+
+  if (active === false) {
+    return "blocked";
+  }
+
+  const locked = readBoolean(record, [
+    "locked",
+    "isLocked",
+    "is_locked",
+    "blocked",
+    "isBlocked",
+    "is_blocked",
+    "disabled",
+    "isDisabled",
+    "is_disabled",
+  ]);
+
+  if (locked === true) {
+    return "blocked";
+  }
+
+  return normalizeAccountStatus(
+    readString(record, [
+      "status",
+      "accountStatus",
+      "account_status",
+      "state",
+    ]),
+    locked === false ? "active" : "active",
+  );
+}
+
 function normalizeUser(value: unknown): AdminUser | null {
   if (!isRecord(value)) {
     return null;
@@ -243,26 +291,21 @@ function normalizeUser(value: unknown): AdminUser | null {
     return null;
   }
 
-  const locked = readBoolean(record, [
-    "locked",
-    "isLocked",
-    "is_locked",
-    "blocked",
-    "isBlocked",
-    "is_blocked",
-    "disabled",
+  const isActive = readBoolean(record, [
+    "is_active",
+    "isActive",
+    "active",
+    "enabled",
+    "is_enabled",
+    "isEnabled",
   ]);
-  const status = locked === true
-    ? "blocked"
-    : normalizeAccountStatus(
-        readString(record, [
-          "status",
-          "accountStatus",
-          "account_status",
-          "state",
-        ]),
-        locked === false ? "active" : "active",
-      );
+  const isVerified = readBoolean(record, [
+    "is_verified",
+    "isVerified",
+    "verified",
+    "email_verified",
+    "emailVerified",
+  ]);
 
   return {
     id,
@@ -281,7 +324,17 @@ function normalizeUser(value: unknown): AdminUser | null {
       readString(record, ["role", "userRole", "user_role", "type"]),
       "user",
     ),
-    status,
+    status: getAccountStatus(record),
+    isActive: isActive ?? undefined,
+    isVerified: isVerified ?? undefined,
+    avatarUrl:
+      readString(record, [
+        "avatar_url",
+        "avatarUrl",
+        "avatar",
+        "imageUrl",
+        "image_url",
+      ]) || undefined,
     createdAt: readString(record, [
       "createdAt",
       "created_at",
@@ -684,13 +737,11 @@ export async function deleteAdminUser(id: string) {
   return response.message;
 }
 
-export async function updateAdminUserStatus(id: string, status: string) {
-  const normalizedStatus = normalizeAccountStatus(status, "active");
+export async function updateAdminUserStatus(id: string) {
   const response = await sendAdminRequest<unknown>(
     `/api/admin/users/${encodeURIComponent(id)}/status`,
     {
       method: "PATCH",
-      body: JSON.stringify({ status: normalizedStatus }),
     },
   );
 

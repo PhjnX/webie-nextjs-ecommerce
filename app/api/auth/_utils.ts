@@ -100,18 +100,52 @@ function extractUser(payload: unknown) {
     return undefined;
   }
 
+  const data = isRecord(payload.data) ? payload.data : undefined;
   const candidates = [
     payload.user,
     payload.account,
     payload.customer,
-    isRecord(payload.data) ? payload.data.user : undefined,
-    isRecord(payload.data) ? payload.data.account : undefined,
-    isRecord(payload.data) ? payload.data.customer : undefined,
+    data?.user,
+    data?.account,
+    data?.customer,
+    data,
+    payload,
   ];
 
-  const user = candidates.find(isRecord);
+  const user = candidates.find(
+    (candidate): candidate is JsonRecord =>
+      isRecord(candidate) && looksLikeUserRecord(candidate),
+  );
 
   return user ? (stripSensitiveFields(user) as JsonRecord) : undefined;
+}
+
+function looksLikeUserRecord(record: JsonRecord) {
+  return [
+    "id",
+    "userId",
+    "user_id",
+    "email",
+    "fullName",
+    "full_name",
+    "name",
+    "role",
+    "status",
+    "accountStatus",
+    "account_status",
+    "is_active",
+    "isActive",
+    "active",
+    "blocked",
+    "isBlocked",
+    "is_blocked",
+    "locked",
+    "isLocked",
+    "is_locked",
+    "deleted",
+    "isDeleted",
+    "is_deleted",
+  ].some((key) => key in record);
 }
 
 function extractMessage(
@@ -165,6 +199,19 @@ function isBlockedOrDeletedUser(user: JsonRecord | undefined) {
     return false;
   }
 
+  const active = readBoolean(user, [
+    "is_active",
+    "isActive",
+    "active",
+    "enabled",
+    "is_enabled",
+    "isEnabled",
+  ]);
+
+  if (active === false) {
+    return true;
+  }
+
   const locked = readBoolean(user, [
     "blocked",
     "isBlocked",
@@ -175,6 +222,9 @@ function isBlockedOrDeletedUser(user: JsonRecord | undefined) {
     "deleted",
     "isDeleted",
     "is_deleted",
+    "disabled",
+    "isDisabled",
+    "is_disabled",
   ]);
 
   if (locked === true) {
@@ -204,6 +254,41 @@ async function readUpstreamPayload(response: Response) {
   const text = await response.text();
 
   return text.trim() || null;
+}
+
+async function fetchAuthenticatedUser(token: string) {
+  try {
+    const response = await fetch(`${AUTH_API_BASE_URL}/user/profile`, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    return extractUser(await readUpstreamPayload(response));
+  } catch {
+    return undefined;
+  }
+}
+
+function blockedSignInResponse() {
+  const response = NextResponse.json(
+    {
+      success: false,
+      message: "This account is blocked or deleted and cannot sign in.",
+    },
+    { status: 403 },
+  );
+
+  response.cookies.delete(AUTH_COOKIE_NAME);
+
+  return response;
 }
 
 export async function readJsonBody(request: Request) {
@@ -277,23 +362,26 @@ export async function postToAuthApi({
       : upstreamResponse.status >= 400
         ? upstreamResponse.status
         : 400;
+    const nextToken = setAuthCookie ? extractToken(upstreamPayload) : undefined;
 
-    if (
-      setAuthCookie &&
-      normalizedPayload.success &&
-      isBlockedOrDeletedUser(normalizedPayload.user)
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "This account is blocked or deleted and cannot sign in.",
-        },
-        { status: 403 },
-      );
+    if (setAuthCookie && normalizedPayload.success) {
+      const authenticatedUser = nextToken
+        ? await fetchAuthenticatedUser(nextToken)
+        : undefined;
+      const blockedUser =
+        isBlockedOrDeletedUser(normalizedPayload.user) ||
+        isBlockedOrDeletedUser(authenticatedUser);
+
+      if (blockedUser) {
+        return blockedSignInResponse();
+      }
+
+      if (!normalizedPayload.user && authenticatedUser) {
+        normalizedPayload.user = authenticatedUser;
+      }
     }
 
     const response = NextResponse.json(normalizedPayload, { status });
-    const nextToken = setAuthCookie ? extractToken(upstreamPayload) : undefined;
 
     if (nextToken) {
       response.cookies.set({

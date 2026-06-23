@@ -69,7 +69,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function getOrderStageIndex(status: string) {
-  const normalizedStatus = status.toLowerCase();
+  const normalizedStatus = normalizeOrderStatus(status);
 
   if (["completed", "delivered", "done", "success"].includes(normalizedStatus)) {
     return 3;
@@ -95,9 +95,28 @@ function getOrderStageIndex(status: string) {
   return 0;
 }
 
+function normalizeOrderStatus(status: string) {
+  return status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
 function canCreatePayment(status: string) {
   return ["pending", "unpaid", "waiting_payment"].includes(
-    status.toLowerCase(),
+    normalizeOrderStatus(status),
+  );
+}
+
+function hasSuccessfulPayment(status: string) {
+  return [
+    "paid",
+    "paymented",
+    "payment_success",
+    "success",
+    "completed",
+    "delivered",
+    "processing",
+    "confirmed",
+  ].includes(
+    normalizeOrderStatus(status),
   );
 }
 
@@ -245,6 +264,15 @@ export default function OrderDetailClient({
 
   const handleCreatePayment = async () => {
     if (!order || paying) {
+      return;
+    }
+
+    if (!canCreatePayment(order.status)) {
+      setPaymentMessage(
+        hasSuccessfulPayment(order.status)
+          ? "This order has already been paid successfully and cannot be paid again."
+          : "Payment is not available for this order.",
+      );
       return;
     }
 
@@ -546,7 +574,9 @@ export default function OrderDetailClient({
                     </button>
                   ) : (
                     <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-800">
-                      Payment is no longer pending for this order.
+                      {hasSuccessfulPayment(order.status)
+                        ? "This order has already been paid successfully and cannot be paid again."
+                        : "Payment is not available for this order."}
                     </div>
                   )}
                 </section>

@@ -222,7 +222,7 @@ export default function Header() {
           <Link href="/" className="flex h-full items-center">
             <div className="relative flex h-22 w-32 items-center md:w-36">
               <Image
-                src="/images/logo.png"
+                src="/images/webie-logo.png"
                 alt="Webie Logo"
                 fill
                 sizes="(max-width: 768px) 128px, 144px"

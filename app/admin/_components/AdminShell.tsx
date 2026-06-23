@@ -245,7 +245,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Link href="/admin" className="flex min-w-0 items-center">
             <div className="relative flex h-22 w-32 items-center md:w-25">
               <Image
-                  src="/images/logo.png"
+                  src="/images/webie-logo.png"
                   alt="Webie Logo"
                   fill
                   sizes="(max-width: 768px) 128px, 100px"

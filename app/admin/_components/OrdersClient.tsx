@@ -224,7 +224,6 @@ export default function OrdersClient() {
                     "Customer name",
                     "Email",
                     "Total amount",
-                    "Payment status",
                     "Order status",
                     "Created date",
                     "Actions",
@@ -253,9 +252,6 @@ export default function OrdersClient() {
                     </td>
                     <td className="px-4 py-4 text-sm font-bold text-stone-900">
                       {formatAdminCurrency(order.totalAmount)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={order.paymentStatus} />
                     </td>
                     <td className="px-4 py-4">
                       <StatusBadge status={order.orderStatus} />

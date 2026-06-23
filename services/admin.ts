@@ -84,6 +84,7 @@ export class AdminApiError extends Error {
     this.status = status;
   }
 }
+const API_URL = "https://coral-mouse-470858.hostingersite.com";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -370,6 +371,16 @@ function normalizeOrderItem(value: unknown, index: number): AdminOrderItem | nul
     readNumber(value, ["totalPrice", "total_price", "subtotal", "amount"]) ||
     unitPrice * quantity;
 
+  const rawImageUrl =
+    readString(value, [
+      "imageUrl",
+      "image_url",
+      "productImageUrl",
+      "product_image_url",
+    ]) ||
+    readString(product, ["image", "imageUrl", "image_url"]) ||
+    undefined;
+
   return {
     id:
       readString(value, ["id", "lineId", "line_id"]) ||
@@ -384,15 +395,7 @@ function normalizeOrderItem(value: unknown, index: number): AdminOrderItem | nul
     quantity,
     unitPrice,
     totalPrice,
-    imageUrl:
-      readString(value, [
-        "imageUrl",
-        "image_url",
-        "productImageUrl",
-        "product_image_url",
-      ]) ||
-      readString(product, ["image", "imageUrl", "image_url"]) ||
-      undefined,
+    imageUrl: `${API_URL}${rawImageUrl}` || undefined,
   };
 }
 

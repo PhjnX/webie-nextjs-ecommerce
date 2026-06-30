@@ -38,11 +38,18 @@ export function getStatusClassName(status: string) {
   return "border-sky-200 bg-sky-50 text-sky-700";
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  size = "xs",
+}: {
+  status: string;
+  size?: "xs" | "sm";
+}) {
   return (
     <span
       className={cn(
-        "inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold",
+        "inline-flex min-h-7 items-center rounded-full border px-2.5 font-bold",
+        size === "sm" ? "text-sm" : "text-xs",
         getStatusClassName(status),
       )}
     >

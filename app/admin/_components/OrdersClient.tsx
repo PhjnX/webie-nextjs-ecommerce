@@ -278,19 +278,19 @@ export default function OrdersClient() {
                     <td className="px-6 py-5 text-sm font-semibold text-stone-900">
                       #{order.id}
                     </td>
-                    <td className="px-6 py-5 text-sm font-semibold text-stone-900">
+                    <td className="px-6 py-5 text-lg font-semibold text-stone-900">
                       {order.customerName}
                     </td>
-                    <td className="px-6 py-5 text-sm text-stone-600">
+                    <td className="px-6 py-5 text-lg text-stone-600">
                       {order.customerEmail || "Not available"}
                     </td>
-                    <td className="px-6 py-5 text-sm font-bold text-stone-900">
+                    <td className="px-6 py-5 text-lg font-bold text-stone-900">
                       {formatAdminCurrency(order.totalAmount)}
                     </td>
                     <td className="px-6 py-5">
-                      <StatusBadge status={order.orderStatus} />
+                      <StatusBadge status={order.orderStatus} size="sm" />
                     </td>
-                    <td className="px-6 py-5 text-sm text-stone-600">
+                    <td className="px-6 py-5 text-base text-stone-600">
                       {formatAdminDate(order.createdAt)}
                     </td>
                     <td className="px-4 py-4">

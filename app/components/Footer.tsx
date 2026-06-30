@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -7,11 +8,17 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-              <span className="font-serif text-lg font-bold tracking-widest text-stone-900">
-                WEBIE
-              </span>
+            <div className="flex items-center mb-4">
+              <div className="relative flex h-22 w-32 items-center md:w-36">
+                <Image
+                    src="/images/webie-logo.png"
+                    alt="Webie Logo"
+                    fill
+                    sizes="(max-width: 768px) 128px, 144px"
+                    className="object-contain object-left"
+                    priority
+                />
+              </div>
             </div>
             <p className="text-xs text-stone-400 leading-relaxed font-light">
               Personalized digital products for professionals and businesses worldwide.

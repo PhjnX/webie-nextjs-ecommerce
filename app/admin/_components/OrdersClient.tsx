@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, Pencil, Search, ShoppingBag } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Pencil,
+  Search,
+  ShoppingBag,
+} from "lucide-react";
 import {
   formatAdminCurrency,
   formatAdminDate,
@@ -19,6 +26,8 @@ import {
   StatusBadge,
 } from "./AdminUi";
 import OrderStatusDialog from "./OrderStatusDialog";
+
+const ORDERS_PER_PAGE = 5;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected admin error.";
@@ -48,6 +57,7 @@ export default function OrdersClient() {
   const [actionErrorMessage, setActionErrorMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [statusDialogError, setStatusDialogError] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
@@ -97,6 +107,24 @@ export default function OrdersClient() {
         return statusMatches && matchesOrder(order, searchTerm);
       }),
     [orders, searchTerm, statusFilter],
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ORDERS_PER_PAGE),
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const visibleOrders = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ORDERS_PER_PAGE;
+
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  }, [filteredOrders, safeCurrentPage]);
+  const visibleStart =
+    filteredOrders.length === 0
+      ? 0
+      : (safeCurrentPage - 1) * ORDERS_PER_PAGE + 1;
+  const visibleEnd = Math.min(
+    safeCurrentPage * ORDERS_PER_PAGE,
+    filteredOrders.length,
   );
 
   const handleUpdateStatus = async (status: string) => {
@@ -179,7 +207,10 @@ export default function OrdersClient() {
             <input
               type="search"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search order, customer, email"
               className="h-12 w-full rounded-md border border-[#eee7d9] bg-white pl-12 pr-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
             />
@@ -189,7 +220,10 @@ export default function OrdersClient() {
             <span className="sr-only">Filter by order status</span>
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setCurrentPage(1);
+              }}
               className="h-12 w-full rounded-md border border-[#eee7d9] bg-white px-4 text-base font-semibold text-stone-700 outline-none transition focus:border-[#d8d2c7] focus:ring-2 focus:ring-[#eee7d9]"
             >
               <option value="all">All statuses</option>
@@ -239,7 +273,7 @@ export default function OrdersClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 bg-white">
-                {filteredOrders.map((order) => (
+                {visibleOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-stone-50/70">
                     <td className="px-6 py-5 text-sm font-semibold text-stone-900">
                       #{order.id}
@@ -287,6 +321,44 @@ export default function OrdersClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-col gap-4 border-t border-[#d8d2c7] px-6 py-7 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm font-medium text-stone-600">
+              Showing{" "}
+              <span className="font-bold text-stone-950">
+                {visibleStart} - {visibleEnd}
+              </span>{" "}
+              of {filteredOrders.length} total order
+              {filteredOrders.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex items-center gap-4 md:justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((page) => Math.max(1, page - 1))
+                }
+                disabled={safeCurrentPage === 1}
+                className="flex h-10 w-10 items-center justify-center rounded-md text-stone-300 transition hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-stone-300"
+                aria-label="Previous orders page"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <span className="flex h-12 min-w-12 items-center justify-center rounded-lg bg-[#746f35] px-4 text-base font-bold text-white">
+                {safeCurrentPage}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+                disabled={safeCurrentPage === totalPages}
+                className="flex h-10 w-10 items-center justify-center rounded-md text-stone-300 transition hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-stone-300"
+                aria-label="Next orders page"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </section>
       )}

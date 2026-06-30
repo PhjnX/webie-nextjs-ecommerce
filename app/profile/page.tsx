@@ -839,7 +839,11 @@ function ProfilePageContent() {
                 <button
                   type="submit"
                   disabled={!selectedAvatar || uploadingAvatar}
-                  className="mt-7 flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#e8e4eb] px-5 text-sm font-semibold text-[#424353] transition hover:bg-[#ded8e4] disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                    selectedAvatar
+                      ? "bg-[#242b36] uppercase text-white hover:bg-[#111827] disabled:bg-[#242b36]/45 disabled:opacity-70"
+                      : "bg-[#e8e4eb] text-[#424353] disabled:opacity-60"
+                  }`}
                 >
                   {uploadingAvatar ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

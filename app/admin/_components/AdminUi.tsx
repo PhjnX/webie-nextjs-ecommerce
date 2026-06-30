@@ -3,6 +3,8 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Inbox,
   Loader2,
   X,
@@ -11,6 +13,71 @@ import { getAdminStatusLabel } from "@/services/admin";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+export function AdminPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+  label,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  label: string;
+}) {
+  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  return (
+    <nav
+      aria-label={label}
+      className="flex max-w-full items-center gap-2 overflow-x-auto pb-1"
+    >
+      {currentPage > 1 ? (
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage - 1)}
+          className="flex h-14 w-14 flex-none items-center justify-center text-stone-950 transition hover:bg-stone-100 hover:text-[#746f35]"
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {pages.map((page) => {
+        const active = page === currentPage;
+
+        return (
+          <button
+            key={page}
+            type="button"
+            onClick={() => onPageChange(page)}
+            aria-current={active ? "page" : undefined}
+            aria-label={`Go to page ${page}`}
+            className={cn(
+              "flex h-14 min-w-14 flex-none items-center justify-center px-3 text-xl font-extrabold transition",
+              active
+                ? "bg-[#c9b879] text-white"
+                : "text-stone-950 hover:bg-stone-100 hover:text-[#746f35]",
+            )}
+          >
+            {page}
+          </button>
+        );
+      })}
+
+      {currentPage < totalPages ? (
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage + 1)}
+          className="flex h-14 w-14 flex-none items-center justify-center text-stone-950 transition hover:bg-stone-100 hover:text-[#746f35]"
+          aria-label="Next page"
+        >
+          <ChevronRight className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
+        </button>
+      ) : null}
+    </nav>
+  );
 }
 
 export function getStatusClassName(status: string) {

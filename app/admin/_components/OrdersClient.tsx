@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   CircleCheckBig,
   CircleDollarSign,
   CircleX,
@@ -24,6 +22,7 @@ import {
   updateAdminOrderStatus,
 } from "@/services/admin";
 import {
+  AdminPagination,
   EmptyPanel,
   ErrorPanel,
   LoadingPanel,
@@ -474,33 +473,12 @@ export default function OrdersClient() {
               of {filteredOrders.length} total order
               {filteredOrders.length === 1 ? "" : "s"}
             </p>
-            <div className="flex items-center gap-4 md:justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentPage((page) => Math.max(1, page - 1))
-                }
-                disabled={safeCurrentPage === 1}
-                className="flex h-10 w-10 items-center justify-center rounded-md text-stone-300 transition hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-stone-300"
-                aria-label="Previous orders page"
-              >
-                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
-              <span className="flex h-12 min-w-12 items-center justify-center rounded-lg bg-[#746f35] px-4 text-base font-bold text-white">
-                {safeCurrentPage}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setCurrentPage((page) => Math.min(totalPages, page + 1))
-                }
-                disabled={safeCurrentPage === totalPages}
-                className="flex h-10 w-10 items-center justify-center rounded-md text-stone-300 transition hover:bg-stone-100 hover:text-stone-600 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-stone-300"
-                aria-label="Next orders page"
-              >
-                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
+            <AdminPagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              label="Orders pagination"
+            />
           </div>
         </section>
       )}

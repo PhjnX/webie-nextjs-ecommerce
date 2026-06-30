@@ -13,7 +13,7 @@ const baseStatusOptions = [
   "processing",
   "completed",
   "cancelled",
-  "refunded",
+  "paid",
 ];
 
 export default function OrderStatusDialog({

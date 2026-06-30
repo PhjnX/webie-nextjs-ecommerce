@@ -13,6 +13,7 @@ import {
   Pencil,
   RefreshCw,
   Search,
+  ShoppingBag,
 } from "lucide-react";
 import {
   formatAdminCurrency,
@@ -32,7 +33,19 @@ import {
 import OrderStatusDialog from "./OrderStatusDialog";
 
 const ORDERS_PER_PAGE = 5;
-const ORDER_STATUS_CARDS = [
+const ORDER_SUMMARY_CARDS = [
+  {
+    status: "all",
+    label: "Total Orders",
+    description: "Across every order status",
+    icon: ShoppingBag,
+    cardClass:
+      "border-[#d8d2c7] bg-gradient-to-br from-[#f5f2e8] via-white to-white hover:border-[#b8b17b]",
+    activeClass: "ring-2 ring-[#746f35] ring-offset-2",
+    accentClass: "bg-[#746f35]",
+    iconClass: "bg-[#ece9d4] text-[#5f5a28]",
+    valueClass: "text-[#4f4b20]",
+  },
   {
     status: "pending",
     label: "Pending",
@@ -172,7 +185,7 @@ export default function OrdersClient() {
 
   const statusCounts = useMemo(() => {
     const counts = new Map<string, number>(
-      ORDER_STATUS_CARDS.map(({ status }) => [status, 0]),
+      ORDER_SUMMARY_CARDS.map(({ status }) => [status, 0]),
     );
 
     for (const order of orders) {
@@ -182,6 +195,8 @@ export default function OrdersClient() {
         counts.set(status, (counts.get(status) ?? 0) + 1);
       }
     }
+
+    counts.set("all", orders.length);
 
     return counts;
   }, [orders]);
@@ -269,8 +284,8 @@ export default function OrdersClient() {
         onDismiss={() => setActionErrorMessage("")}
       />
 
-      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {ORDER_STATUS_CARDS.map((card) => {
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {ORDER_SUMMARY_CARDS.map((card) => {
           const Icon = card.icon;
           const active = statusFilter === card.status;
 
@@ -283,8 +298,16 @@ export default function OrdersClient() {
                 setCurrentPage(1);
               }}
               aria-pressed={active}
-              aria-label={`${active ? "Clear" : "Filter by"} ${card.label} orders`}
-              className={`group relative min-h-40 overflow-hidden rounded-xl border p-5 text-left shadow-[0_10px_30px_rgba(37,32,12,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,32,12,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-800 focus-visible:ring-offset-2 ${card.cardClass} ${
+              aria-label={
+                card.status === "all"
+                  ? "Show all orders"
+                  : `${active ? "Clear" : "Filter by"} ${card.label} orders`
+              }
+              className={`group relative overflow-hidden rounded-xl border p-5 text-left shadow-[0_10px_30px_rgba(37,32,12,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,32,12,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-800 focus-visible:ring-offset-2 ${
+                card.status === "all"
+                  ? "col-span-full min-h-40 w-full max-w-[320px]"
+                  : "min-h-40"
+              } ${card.cardClass} ${
                 active ? card.activeClass : ""
               }`}
             >

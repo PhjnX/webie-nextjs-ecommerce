@@ -16,7 +16,7 @@ export function cn(...classes: Array<string | false | null | undefined>) {
 export function getStatusClassName(status: string) {
   const normalizedStatus = status.toLowerCase();
 
-  if (["active", "completed", "paid", "success", "delivered"].includes(normalizedStatus)) {
+  if (["active", "completed", "success", "delivered"].includes(normalizedStatus)) {
     return "border-green-300 bg-emerald-50 text-black";
   }
 
@@ -31,8 +31,8 @@ export function getStatusClassName(status: string) {
     return "border-yellow-200 bg-yellow-50 text-black";
   }
 
-  if (["refunded", "draft", "inactive", "unknown"].includes(normalizedStatus)) {
-    return "border-stone-200 bg-stone-100 text-stone-600";
+  if (["paid"].includes(normalizedStatus)) {
+    return "border-violet-200 bg-violet-100 text-black";
   }
 
   return "border-sky-200 bg-sky-50 text-sky-700";

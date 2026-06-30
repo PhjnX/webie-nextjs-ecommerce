@@ -142,8 +142,8 @@ function getOrderStatusClass(status: string) {
     return "border-yellow-200 bg-yellow-100 text-black";
   }
 
-  if (["refunded", "draft", "inactive", "unknown"].includes(normalizedStatus)) {
-    return "border-stone-200 bg-stone-100 text-stone-600";
+  if (["paid"].includes(normalizedStatus)) {
+    return "border-violet-200 bg-violet-100 text-black";
   }
 
   return "border-sky-200 bg-sky-50 text-sky-700";

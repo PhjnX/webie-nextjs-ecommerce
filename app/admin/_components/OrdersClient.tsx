@@ -5,10 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  CircleCheckBig,
+  CircleDollarSign,
+  CircleX,
+  Clock3,
   Eye,
   Pencil,
+  RefreshCw,
   Search,
-  ShoppingBag,
 } from "lucide-react";
 import {
   formatAdminCurrency,
@@ -28,6 +32,68 @@ import {
 import OrderStatusDialog from "./OrderStatusDialog";
 
 const ORDERS_PER_PAGE = 5;
+const ORDER_STATUS_CARDS = [
+  {
+    status: "pending",
+    label: "Pending",
+    description: "Awaiting confirmation",
+    icon: Clock3,
+    cardClass:
+      "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white hover:border-amber-300",
+    activeClass: "ring-2 ring-amber-400 ring-offset-2",
+    accentClass: "bg-amber-400",
+    iconClass: "bg-amber-100 text-amber-700",
+    valueClass: "text-amber-700",
+  },
+  {
+    status: "processing",
+    label: "Processing",
+    description: "Currently being prepared",
+    icon: RefreshCw,
+    cardClass:
+      "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white hover:border-blue-300",
+    activeClass: "ring-2 ring-blue-400 ring-offset-2",
+    accentClass: "bg-blue-500",
+    iconClass: "bg-blue-100 text-blue-700",
+    valueClass: "text-blue-700",
+  },
+  {
+    status: "paid",
+    label: "Paid",
+    description: "Payment received",
+    icon: CircleDollarSign,
+    cardClass:
+      "border-violet-200 bg-gradient-to-br from-violet-50 via-white to-white hover:border-violet-300",
+    activeClass: "ring-2 ring-violet-400 ring-offset-2",
+    accentClass: "bg-violet-500",
+    iconClass: "bg-violet-100 text-violet-700",
+    valueClass: "text-violet-700",
+  },
+  {
+    status: "completed",
+    label: "Completed",
+    description: "Successfully fulfilled",
+    icon: CircleCheckBig,
+    cardClass:
+      "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white hover:border-emerald-300",
+    activeClass: "ring-2 ring-emerald-400 ring-offset-2",
+    accentClass: "bg-emerald-500",
+    iconClass: "bg-emerald-100 text-emerald-700",
+    valueClass: "text-emerald-700",
+  },
+  {
+    status: "cancelled",
+    label: "Cancelled",
+    description: "Stopped or declined",
+    icon: CircleX,
+    cardClass:
+      "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white hover:border-rose-300",
+    activeClass: "ring-2 ring-rose-400 ring-offset-2",
+    accentClass: "bg-rose-500",
+    iconClass: "bg-rose-100 text-rose-700",
+    valueClass: "text-rose-700",
+  },
+] as const;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected admin error.";
@@ -47,6 +113,12 @@ function matchesOrder(order: AdminOrder, query: string) {
 
 function formatCompactNumber(value: number) {
   return value.toLocaleString("en");
+}
+
+function normalizeOrderStatus(status: string) {
+  const normalizedStatus = status.trim().toLowerCase();
+
+  return normalizedStatus === "canceled" ? "cancelled" : normalizedStatus;
 }
 
 export default function OrdersClient() {
@@ -91,18 +163,35 @@ export default function OrdersClient() {
 
     for (const order of orders) {
       if (order.orderStatus) {
-        options.add(order.orderStatus);
+        options.add(normalizeOrderStatus(order.orderStatus));
       }
     }
 
     return Array.from(options);
   }, [orders]);
 
+  const statusCounts = useMemo(() => {
+    const counts = new Map<string, number>(
+      ORDER_STATUS_CARDS.map(({ status }) => [status, 0]),
+    );
+
+    for (const order of orders) {
+      const status = normalizeOrderStatus(order.orderStatus);
+
+      if (counts.has(status)) {
+        counts.set(status, (counts.get(status) ?? 0) + 1);
+      }
+    }
+
+    return counts;
+  }, [orders]);
+
   const filteredOrders = useMemo(
     () =>
       orders.filter((order) => {
         const statusMatches =
-          statusFilter === "all" || order.orderStatus === statusFilter;
+          statusFilter === "all" ||
+          normalizeOrderStatus(order.orderStatus) === statusFilter;
 
         return statusMatches && matchesOrder(order, searchTerm);
       }),
@@ -180,25 +269,55 @@ export default function OrdersClient() {
         onDismiss={() => setActionErrorMessage("")}
       />
 
-      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 xl:grid-cols-[330px_1fr] xl:items-end">
-        <article className="rounded-lg border border-[#eee7d9] bg-white p-5 shadow-[0_10px_30px_rgba(37,32,12,0.05)]">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-stone-500">Total orders</p>
-              <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-stone-950">
-                {formatCompactNumber(orders.length)}
-              </p>
-            </div>
-            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-md bg-stone-100 text-stone-700">
-              <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-            </span>
-          </div>
-          <p className="mt-5 text-sm font-medium leading-6 text-stone-500">
-            {formatCompactNumber(filteredOrders.length)} showing after search and filter
-          </p>
-        </article>
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {ORDER_STATUS_CARDS.map((card) => {
+          const Icon = card.icon;
+          const active = statusFilter === card.status;
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_240px] xl:justify-self-end xl:w-full xl:max-w-[760px]">
+          return (
+            <button
+              key={card.status}
+              type="button"
+              onClick={() => {
+                setStatusFilter(active ? "all" : card.status);
+                setCurrentPage(1);
+              }}
+              aria-pressed={active}
+              aria-label={`${active ? "Clear" : "Filter by"} ${card.label} orders`}
+              className={`group relative min-h-40 overflow-hidden rounded-xl border p-5 text-left shadow-[0_10px_30px_rgba(37,32,12,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(37,32,12,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-800 focus-visible:ring-offset-2 ${card.cardClass} ${
+                active ? card.activeClass : ""
+              }`}
+            >
+              <span
+                className={`absolute inset-x-0 top-0 h-1 ${card.accentClass}`}
+              />
+              <span className="flex items-start justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-bold text-stone-600">
+                    {card.label}
+                  </span>
+                  <span
+                    className={`mt-3 block text-4xl font-extrabold tracking-tight ${card.valueClass}`}
+                  >
+                    {formatCompactNumber(statusCounts.get(card.status) ?? 0)}
+                  </span>
+                </span>
+                <span
+                  className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${card.iconClass}`}
+                >
+                  <Icon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                </span>
+              </span>
+              <span className="mt-4 block text-sm font-medium text-stone-500">
+                {card.description}
+              </span>
+            </button>
+          );
+        })}
+      </section>
+
+      <section className="mx-auto w-full max-w-[1600px] rounded-xl border border-[#eee7d9] bg-white p-4 shadow-[0_10px_30px_rgba(37,32,12,0.05)] sm:p-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_240px]">
           <label className="relative w-full">
             <Search
               className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
@@ -248,7 +367,7 @@ export default function OrdersClient() {
           description="Try a different search term or status filter."
         />
       ) : (
-        <section className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+        <section className="mx-auto w-full max-w-[1600px] overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-[1080px] w-full divide-y divide-stone-200 text-left">
               <thead className="bg-stone-50">

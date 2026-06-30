@@ -376,19 +376,20 @@ export default function UsersClient() {
         onDismiss={() => setActionErrorMessage("")}
       />
 
-      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 xl:grid-cols-[330px_1fr] xl:items-end">
-        <article className="rounded-lg border border-[#eee7d9] bg-white p-5 shadow-[0_10px_30px_rgba(37,32,12,0.05)]">
+      <section className="mx-auto w-full max-w-[1600px]">
+        <article className="relative min-h-40 w-full max-w-[320px] overflow-hidden rounded-xl border border-[#d8d2c7] bg-gradient-to-br from-[#f5f2e8] via-white to-white p-5 shadow-[0_10px_30px_rgba(37,32,12,0.06)]">
+          <span className="absolute inset-x-0 top-0 h-1 bg-[#746f35]" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-bold text-stone-500">Total users</p>
-              <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-stone-950">
+              <p className="text-sm font-bold text-stone-600">Total users</p>
+              <p className="mt-3 break-words text-4xl font-extrabold tracking-tight text-[#4f4b20]">
                 {formatCompactNumber(users.length)}
               </p>
             </div>
-            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-md bg-stone-100 text-stone-700">
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-[#ece9d4] text-[#5f5a28]">
               <UsersRound
                 className="h-5 w-5"
-                strokeWidth={1.8}
+                strokeWidth={2}
                 aria-hidden="true"
               />
             </span>
@@ -397,8 +398,10 @@ export default function UsersClient() {
             {formatCompactNumber(filteredUsers.length)} showing after search and filter
           </p>
         </article>
+      </section>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_200px_200px_auto] xl:justify-self-end xl:w-full xl:max-w-[980px]">
+      <section className="mx-auto w-full max-w-[1600px] rounded-xl border border-[#eee7d9] bg-white p-4 shadow-[0_10px_30px_rgba(37,32,12,0.05)] sm:p-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_200px_200px_auto]">
           <label className="relative w-full">
             <Search
               className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400"
